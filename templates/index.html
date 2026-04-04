@@ -1,0 +1,2879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WCST ACT-R Simulation Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-card: #1a1d2e;
+  --bg-card-hover: #222640;
+  --border: #2a2e42;
+  --text-primary: #e4e6f0;
+  --text-secondary: #8b8fa3;
+  --accent-blue: #4f8cff;
+  --accent-green: #4ade80;
+  --accent-red: #f87171;
+  --accent-yellow: #fbbf24;
+  --accent-purple: #a78bfa;
+  --accent-orange: #fb923c;
+  --accent-cyan: #22d3ee;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  margin: 0; padding: 0;
+}
+.header {
+  background: linear-gradient(135deg, #1a1d2e 0%, #0f1117 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 2rem 0 1rem;
+}
+.header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+.header .subtitle { color: var(--text-secondary); font-size: 0.95rem; }
+.card-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.card-panel h3 {
+  font-size: 1rem; font-weight: 600; margin-bottom: 1rem;
+  color: var(--accent-blue);
+}
+.param-group { margin-bottom: 1rem; }
+.param-group label {
+  display: block; font-size: 0.82rem; font-weight: 500;
+  margin-bottom: 0.3rem; color: var(--text-secondary);
+}
+.param-group .value-display {
+  float: right; font-family: 'JetBrains Mono', monospace;
+  color: var(--accent-blue); font-size: 0.82rem;
+}
+input[type="range"] { width: 100%; accent-color: var(--accent-blue); height: 6px; }
+.btn-run {
+  background: var(--accent-blue); color: #fff; border: none; border-radius: 8px;
+  padding: 0.75rem 2rem; font-weight: 600; font-size: 0.95rem; cursor: pointer;
+  width: 100%; transition: background 0.2s;
+}
+.btn-run:hover { background: #3d7aee; }
+.btn-run:disabled { background: #3a3e52; cursor: not-allowed; }
+.spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid #fff4; border-top-color: #fff;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  margin-right: 8px; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.stat-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.stat-table th {
+  text-align: left; padding: 0.45rem 0.5rem;
+  border-bottom: 2px solid var(--border);
+  color: var(--text-secondary); font-weight: 600;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.stat-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); }
+.stat-table tr:last-child td { border-bottom: none; }
+.stat-table .basic-val { color: var(--accent-blue); font-weight: 600; }
+.stat-table .enhanced-val { color: var(--accent-purple); font-weight: 600; }
+.stat-table .human-val { color: var(--accent-green); font-weight: 600; }
+.stat-table .best-fit { background: rgba(74,222,128,0.08); }
+.chart-container { position: relative; width: 100%; }
+.info-badge {
+  display: inline-block; background: #252840; color: var(--text-secondary);
+  font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 4px; margin-left: 0.5rem;
+}
+.elapsed-info { text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-top: 1rem; }
+
+/* Model toggle */
+.model-toggle {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 1rem; padding: 0.75rem 1rem;
+  background: #151829; border-radius: 8px; border: 1px solid var(--border);
+}
+.model-toggle .toggle-label { font-size: 0.82rem; font-weight: 500; }
+.toggle-switch {
+  position: relative; width: 44px; height: 24px;
+}
+.toggle-switch input { display: none; }
+.toggle-switch .slider {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--accent-blue); border-radius: 12px; cursor: pointer;
+  transition: background 0.3s;
+}
+.toggle-switch .slider::before {
+  content: ''; position: absolute; width: 18px; height: 18px;
+  left: 3px; bottom: 3px; background: #fff; border-radius: 50%;
+  transition: transform 0.3s;
+}
+.toggle-switch input:checked + .slider { background: var(--accent-purple); }
+.toggle-switch input:checked + .slider::before { transform: translateX(20px); }
+
+/* RMSD badges */
+.rmsd-badge {
+  display: inline-block; padding: 0.3rem 0.7rem; border-radius: 6px;
+  font-size: 0.85rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+}
+.rmsd-basic { background: rgba(79,140,255,0.15); color: var(--accent-blue); }
+.rmsd-enhanced { background: rgba(167,139,250,0.15); color: var(--accent-purple); }
+.rmsd-container {
+  display: flex; gap: 1.5rem; align-items: center; justify-content: center;
+  margin-bottom: 1rem; flex-wrap: wrap;
+}
+.rmsd-item { text-align: center; }
+.rmsd-item .rmsd-label { font-size: 0.72rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Tag badges */
+.tag-basic { background: rgba(79,140,255,0.15); color: var(--accent-blue); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+.tag-enhanced { background: rgba(167,139,250,0.15); color: var(--accent-purple); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+.tag-human { background: rgba(74,222,128,0.15); color: var(--accent-green); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+.tag-full { background: rgba(248,113,113,0.15); color: var(--accent-red); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+
+/* Enhanced param section */
+.param-section-title {
+  font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-secondary);
+  margin: 1rem 0 0.5rem; padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.param-section-title.enhanced-title { color: var(--accent-purple); }
+
+.methodology {
+  font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary);
+}
+.methodology h4 { color: var(--text-primary); font-size: 0.95rem; margin-top: 1rem; }
+.methodology code {
+  background: #252840; color: var(--accent-yellow);
+  padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.82rem;
+}
+
+#results-area { display: none; }
+.fade-in { animation: fadeIn 0.4s ease-in; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ===== TAB NAVIGATION ===== */
+.tab-nav {
+  display: flex; gap: 0; margin: 1rem 0 0;
+  border-bottom: 2px solid var(--border);
+}
+.tab-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem; font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent; border: none;
+  cursor: pointer; position: relative;
+  transition: color 0.2s;
+}
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active {
+  color: var(--accent-blue);
+}
+.tab-btn.active::after {
+  content: '';
+  position: absolute; bottom: -2px; left: 0; right: 0;
+  height: 2px; background: var(--accent-blue);
+}
+.tab-btn.teaching-tab.active { color: var(--accent-orange); }
+.tab-btn.teaching-tab.active::after { background: var(--accent-orange); }
+.tab-btn.optimize-tab.active { color: var(--accent-cyan); }
+.tab-btn.optimize-tab.active::after { background: var(--accent-cyan); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ===== TEACHING NARRATIVE ===== */
+.narrative {
+  background: #151829;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+.narrative h4 {
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  margin-top: 0;
+}
+.narrative h5 {
+  color: var(--accent-orange);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+.narrative p { margin: 0.5rem 0; }
+.narrative strong { color: var(--text-primary); }
+.narrative em { color: var(--accent-yellow); font-style: normal; }
+.narrative .key-term {
+  background: rgba(251,191,36,0.1);
+  color: var(--accent-yellow);
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.narrative .insight-box {
+  background: rgba(74,222,128,0.06);
+  border-left: 3px solid var(--accent-green);
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  border-radius: 0 6px 6px 0;
+}
+.narrative .insight-box strong { color: var(--accent-green); }
+.narrative .think-box {
+  background: rgba(167,139,250,0.06);
+  border-left: 3px solid var(--accent-purple);
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  border-radius: 0 6px 6px 0;
+}
+.narrative .think-box strong { color: var(--accent-purple); }
+.narrative ul { padding-left: 1.25rem; }
+.narrative li { margin: 0.3rem 0; }
+
+/* Model progression cards */
+.model-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background: var(--bg-card);
+}
+.model-card.basic-card { border-left: 4px solid var(--accent-blue); }
+.model-card.enhanced-card { border-left: 4px solid var(--accent-purple); }
+.model-card.full-card { border-left: 4px solid var(--accent-red); }
+.model-card h5 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; }
+.model-card p { font-size: 0.85rem; color: var(--text-secondary); margin: 0.3rem 0; line-height: 1.6; }
+
+/* ===== CHART EXPLAINER BOXES ===== */
+.chart-explainer {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: #12142188;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+.chart-explainer .explainer-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-orange);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.chart-explainer .explainer-title::before {
+  content: '';
+  display: inline-block;
+  width: 16px; height: 16px;
+  background: var(--accent-orange);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4m0-4h.01'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4m0-4h.01'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+.chart-explainer .model-note {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+.chart-explainer .model-note.basic-note {
+  background: rgba(79,140,255,0.06);
+  border-left: 3px solid var(--accent-blue);
+}
+.chart-explainer .model-note.enhanced-note {
+  background: rgba(167,139,250,0.06);
+  border-left: 3px solid var(--accent-purple);
+}
+.chart-explainer .model-note.full-note {
+  background: rgba(248,113,113,0.06);
+  border-left: 3px solid var(--accent-red);
+}
+.chart-explainer .model-note.human-note {
+  background: rgba(74,222,128,0.06);
+  border-left: 3px solid var(--accent-green);
+}
+.chart-explainer .model-note strong {
+  color: var(--text-primary);
+}
+.chart-explainer .model-note .model-tag {
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  margin-right: 0.3rem;
+}
+.chart-explainer .model-note .model-tag.tag-b { background: rgba(79,140,255,0.15); color: var(--accent-blue); }
+.chart-explainer .model-note .model-tag.tag-e { background: rgba(167,139,250,0.15); color: var(--accent-purple); }
+.chart-explainer .model-note .model-tag.tag-f { background: rgba(248,113,113,0.15); color: var(--accent-red); }
+.chart-explainer .model-note .model-tag.tag-h { background: rgba(74,222,128,0.15); color: var(--accent-green); }
+.chart-explainer .why-arrow {
+  color: var(--accent-yellow);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+.chart-explainer p { margin: 0.4rem 0; }
+.chart-explainer em { color: var(--accent-yellow); font-style: normal; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <h1>Wisconsin Card Sorting Test -- ACT-R Cognitive Model</h1>
+    <div class="subtitle">
+      pyactr implementation | Utility learning, hypothesis tracking, attentional lapses, asymmetric learning rates
+    </div>
+    <!-- Tab navigation -->
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('research')">Research</button>
+      <button class="tab-btn teaching-tab" onclick="switchTab('teaching')">Teaching</button>
+      <button class="tab-btn optimize-tab" onclick="switchTab('optimize')">Optimization</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- TAB 1: RESEARCH (existing content)                               -->
+<!-- ================================================================ -->
+<div id="tab-research" class="tab-content active">
+<div class="container py-4">
+<div class="row">
+
+<!-- LEFT SIDEBAR: Controls -->
+<div class="col-lg-3">
+  <div class="card-panel">
+    <h3>Model Parameters</h3>
+
+    <div class="param-section-title">Core ACT-R</div>
+    {% for key, desc in param_descriptions.items() %}
+    {% if desc.group == "core" %}
+    <div class="param-group">
+      <label>
+        {{ desc.label }}
+        <span class="value-display" id="val_{{ key }}">{{ params[key] }}</span>
+      </label>
+      <input type="range" id="param_{{ key }}"
+             min="{{ desc.min }}" max="{{ desc.max }}" step="{{ desc.step }}"
+             value="{{ params[key] }}"
+             oninput="document.getElementById('val_{{ key }}').textContent = this.value">
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    <div class="param-section-title enhanced-title">Enhanced Mechanisms</div>
+    {% for key, desc in param_descriptions.items() %}
+    {% if desc.group == "enhanced" %}
+    <div class="param-group">
+      <label>
+        {{ desc.label }}
+        <span class="value-display" id="val_{{ key }}">{{ params[key] }}</span>
+      </label>
+      <input type="range" id="param_{{ key }}"
+             min="{{ desc.min }}" max="{{ desc.max }}" step="{{ desc.step }}"
+             value="{{ params[key] }}"
+             oninput="document.getElementById('val_{{ key }}').textContent = this.value">
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    <div class="param-group" style="margin-top:1rem;">
+      <label>
+        Simulations (N)
+        <span class="value-display" id="val_nsims">30</span>
+      </label>
+      <input type="range" id="param_nsims" min="5" max="100" step="5" value="30"
+             oninput="document.getElementById('val_nsims').textContent = this.value">
+    </div>
+
+    <button class="btn-run" id="btn-run" onclick="runSimulation()">
+      Run Both Models
+    </button>
+    <button class="btn-run" id="btn-variants" onclick="runVariants()" style="margin-top:0.5rem;background:var(--accent-cyan);color:#0f1117;">
+      Explore All 7 Variants
+    </button>
+    <div class="elapsed-info" id="elapsed-info"></div>
+  </div>
+
+  <div class="card-panel methodology">
+    <h3>Architecture</h3>
+    <h4>Basic Model</h4>
+    <p>Three competing productions select the sorting dimension. Selection follows utility-based conflict resolution with logistic noise. After feedback:</p>
+    <p><code>U_new = U_old + &alpha;(R - t - U_old)</code></p>
+    <h4>Enhanced Model</h4>
+    <p>Adds three mechanisms:</p>
+    <p><strong>1. Hypothesis tracking</strong>: After errors, declarative memory recalls previously failed rules, suppressing their utility and boosting untried alternatives.</p>
+    <p><strong>2. Attentional lapses</strong>: Random rule selection with probability <code>p_lapse</code>, modelling momentary disengagement.</p>
+    <p><strong>3. Set maintenance decay</strong>: After sustained correct responding, utility can regress toward baseline, modelling WM maintenance failure.</p>
+    <h4>References</h4>
+    <p style="font-size:0.78rem;">
+      Anderson & Lebiere (1998). <em>The Atomic Components of Thought</em>.<br>
+      Lovett (2005). <em>Cognitive Science</em>, 29(3).<br>
+      Heaton et al. (1993). <em>WCST Manual</em>.<br>
+      Barcelo & Knight (2002). <em>Neuropsychologia</em>, 40(3).<br>
+      Altmann & Gray (2008). <em>Psychological Review</em>, 115(3).
+    </p>
+  </div>
+</div>
+
+<!-- MAIN CONTENT: Results -->
+<div class="col-lg-9">
+
+  <!-- Loading placeholder -->
+  <div id="loading-placeholder" class="card-panel text-center" style="padding:4rem;">
+    <h3 style="color:var(--text-secondary);">Configure parameters and click "Run Both Models"</h3>
+    <p class="text-secondary">Both the basic model (utility learning only) and the enhanced model (+ hypothesis tracking, attentional lapses, set decay) will be run side-by-side with the same parameters.</p>
+  </div>
+
+  <!-- Loading spinner -->
+  <div id="loading-spinner" class="card-panel text-center" style="display:none; padding:4rem;">
+    <div class="spinner" style="width:40px;height:40px;border-width:3px;"></div>
+    <h3 style="margin-top:1rem;">Running Both ACT-R Models...</h3>
+    <p class="text-secondary">Basic + Enhanced models running N simulations each. This may take 15-30 seconds.</p>
+  </div>
+
+  <div id="results-area">
+
+    <!-- RMSD Comparison -->
+    <div class="card-panel fade-in">
+      <h3>Goodness of Fit (RMSD, normalized by human SD)</h3>
+      <div class="rmsd-container" id="rmsd-container">
+        <div class="rmsd-item">
+          <span class="rmsd-label">Basic Model</span>
+          <span class="rmsd-badge rmsd-basic" id="rmsd-basic">--</span>
+        </div>
+        <div class="rmsd-item" style="font-size:1.5rem;color:var(--text-secondary);">vs</div>
+        <div class="rmsd-item">
+          <span class="rmsd-label">Enhanced Model</span>
+          <span class="rmsd-badge rmsd-enhanced" id="rmsd-enhanced">--</span>
+        </div>
+        <div class="rmsd-item">
+          <span class="rmsd-label">Improvement</span>
+          <span class="rmsd-badge" id="rmsd-improvement" style="background:rgba(74,222,128,0.15);color:var(--accent-green);">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Stats: Three-way comparison table -->
+    <div class="card-panel fade-in">
+      <h3>Summary Statistics
+        <span class="tag-basic">Basic</span>
+        <span class="tag-enhanced">Enhanced</span>
+        <span class="tag-human">Human (Heaton 1993)</span>
+      </h3>
+      <table class="stat-table" id="summary-table">
+        <thead>
+          <tr>
+            <th>Measure</th>
+            <th>Basic Mean</th>
+            <th>Basic SD</th>
+            <th>Enhanced Mean</th>
+            <th>Enhanced SD</th>
+            <th>Human Mean</th>
+            <th>Human SD</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- ROW: Bar chart comparison (3-way) -->
+    <div class="card-panel fade-in">
+      <h3>Key Metrics: Three-Way Comparison</h3>
+      <div class="chart-container" style="height:380px;">
+        <canvas id="chart-bar"></canvas>
+      </div>
+    </div>
+
+    <!-- ROW: Error breakdown side-by-side -->
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card-panel fade-in">
+          <h3>Error Breakdown</h3>
+          <div class="chart-container" style="height:320px;">
+            <canvas id="chart-errors"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card-panel fade-in">
+          <h3>Perseverative Errors Distribution</h3>
+          <div class="chart-container" style="height:320px;">
+            <canvas id="chart-distribution"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW: Trial-by-trial accuracy -->
+    <div class="card-panel fade-in">
+      <h3>Trial-by-Trial Accuracy
+        <span class="info-badge">smoothed, 5-trial window</span>
+      </h3>
+      <div class="chart-container" style="height:340px;">
+        <canvas id="chart-trial-accuracy"></canvas>
+      </div>
+    </div>
+
+    <!-- ROW: Post-switch + Utility traces -->
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card-panel fade-in">
+          <h3>Post-Switch Accuracy</h3>
+          <div class="chart-container" style="height:320px;">
+            <canvas id="chart-postswitch"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card-panel fade-in">
+          <h3>Utility Traces
+            <span class="info-badge" id="utility-model-label">Basic</span>
+          </h3>
+          <div class="model-toggle" style="margin-bottom:0.5rem;">
+            <span class="toggle-label" style="color:var(--accent-blue);">Basic</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="utility-toggle" onchange="updateUtilityChart()">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label" style="color:var(--accent-purple);">Enhanced</span>
+          </div>
+          <div class="chart-container" style="height:260px;">
+            <canvas id="chart-utilities"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- results-area -->
+
+  <!-- ================================================================ -->
+  <!-- VARIANT COMPARISON SECTION -->
+  <!-- ================================================================ -->
+
+  <div id="variant-spinner" class="card-panel text-center" style="display:none; padding:4rem;">
+    <div class="spinner" style="width:40px;height:40px;border-width:3px;"></div>
+    <h3 style="margin-top:1rem;">Running 7 Model Variants...</h3>
+    <p class="text-secondary">Basic + Enhanced + 4 additional mechanisms + Combined. ~30-45 seconds.</p>
+  </div>
+
+  <div id="variant-results" style="display:none;">
+
+    <!-- Variant Leaderboard -->
+    <div class="card-panel fade-in" style="border-color:#22d3ee44;">
+      <h3 style="color:var(--accent-cyan);">Variant Leaderboard
+        <span class="info-badge">ranked by RMSD, lower is better</span>
+      </h3>
+      <div id="variant-elapsed" class="elapsed-info" style="margin-bottom:1rem;margin-top:0;"></div>
+      <table class="stat-table" id="variant-leaderboard">
+        <thead>
+          <tr>
+            <th style="width:30px;">#</th>
+            <th>Variant</th>
+            <th>RMSD</th>
+            <th>PE</th>
+            <th>NPE</th>
+            <th>FMS</th>
+            <th>CLR%</th>
+            <th>Total Err</th>
+            <th>Trials 1st</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div style="margin-top:0.75rem;font-size:0.72rem;color:var(--text-secondary);">
+        PE=Perseverative Errors, NPE=Non-Persev. Errors, FMS=Failure to Maintain Set, CLR%=Conceptual Level Responses
+      </div>
+    </div>
+
+    <!-- Variant descriptions -->
+    <div class="card-panel fade-in" id="variant-descriptions-panel">
+      <h3 style="color:var(--accent-cyan);">Mechanism Descriptions</h3>
+      <div id="variant-descriptions"></div>
+    </div>
+
+    <!-- RMSD Bar Chart -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">RMSD Comparison (lower = better fit to human data)</h3>
+      <div class="chart-container" style="height:300px;">
+        <canvas id="chart-variant-rmsd"></canvas>
+      </div>
+    </div>
+
+    <!-- Key Metrics Grouped -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Perseverative Errors by Variant vs Human</h3>
+      <div class="chart-container" style="height:300px;">
+        <canvas id="chart-variant-pe"></canvas>
+      </div>
+    </div>
+
+    <!-- Post-switch for all variants -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Post-Switch Recovery: All Variants</h3>
+      <div class="chart-container" style="height:360px;">
+        <canvas id="chart-variant-postswitch"></canvas>
+      </div>
+    </div>
+
+  </div><!-- variant-results -->
+
+</div><!-- col-lg-9 -->
+</div><!-- row -->
+</div><!-- container -->
+</div><!-- tab-research -->
+
+
+<!-- ================================================================ -->
+<!-- TAB 2: TEACHING                                                  -->
+<!-- ================================================================ -->
+<div id="tab-teaching" class="tab-content">
+<div class="container py-4">
+
+  <!-- Intro narrative -->
+  <div class="narrative">
+    <h4>Welcome to the WCST Cognitive Modelling Lab</h4>
+    <p>This interactive tool lets you explore how a <strong>computational cognitive model</strong> learns to perform the Wisconsin Card Sorting Test (WCST) -- one of the most widely used neuropsychological tests of executive function.</p>
+    <p>You will see three progressively more sophisticated models, each adding new cognitive mechanisms. By comparing them against real human data from Heaton et al. (1993), you can see which aspects of cognition are needed to explain different patterns of behaviour.</p>
+
+    <div class="insight-box">
+      <strong>Learning goal:</strong> Understand how reinforcement learning, hypothesis testing, attentional lapses, and asymmetric learning rates each contribute to human performance on the WCST.
+    </div>
+
+    <h5>What is the WCST?</h5>
+    <p>The <strong>Wisconsin Card Sorting Test</strong> presents a participant with 128 cards that vary on three dimensions: <em>colour</em>, <em>shape</em>, and <em>number</em>. The participant must sort each card by one dimension (the "rule"), but is <strong>never told which rule is correct</strong>. The only feedback is "correct" or "incorrect" after each sort.</p>
+    <p>Here is the key challenge: after 10 consecutive correct sorts, the rule <strong>silently changes</strong>. The participant must detect this change and discover the new rule. The sequence follows: colour &rarr; shape &rarr; number &rarr; colour &rarr; shape &rarr; number (6 categories maximum).</p>
+
+    <h5>Why does the WCST matter?</h5>
+    <p>The WCST measures <strong>cognitive flexibility</strong> -- the ability to shift between mental strategies. It is sensitive to frontal lobe damage, making it a core tool in clinical neuropsychology. When patients with prefrontal lesions take the WCST, they show a characteristic pattern of <span class="key-term">perseverative errors</span>: they keep sorting by the old rule even after it stops being rewarded.</p>
+
+    <h5>What is ACT-R?</h5>
+    <p><strong>ACT-R</strong> (Adaptive Control of Thought -- Rational) is a cognitive architecture developed by John Anderson at Carnegie Mellon University. It models cognition as the interaction of several modules: procedural memory (production rules), declarative memory (facts), and a goal system. The key mechanism we use here is <span class="key-term">utility learning</span> -- production rules compete for selection based on their expected reward, and these expectations update with experience.</p>
+  </div>
+
+  <!-- Run button for teaching -->
+  <div class="card-panel text-center" id="teaching-controls">
+    <h3 style="color:var(--accent-orange);">Run the Three Models</h3>
+    <p style="color:var(--text-secondary);font-size:0.9rem;">
+      This will run 30 simulations each of the Basic, Enhanced, and Full models, then compare them against human data.
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:center;align-items:center;flex-wrap:wrap;margin:1rem 0;">
+      <div>
+        <label style="font-size:0.82rem;color:var(--text-secondary);">Simulations (N)
+          <span style="color:var(--accent-orange);font-family:monospace;" id="val_teach_nsims">30</span>
+        </label>
+        <input type="range" id="param_teach_nsims" min="5" max="100" step="5" value="30"
+               style="width:200px;" oninput="document.getElementById('val_teach_nsims').textContent=this.value">
+      </div>
+    </div>
+    <button class="btn-run" id="btn-teaching" onclick="runTeaching()" style="max-width:400px;margin:0 auto;background:var(--accent-orange);color:#0f1117;">
+      Run Teaching Comparison
+    </button>
+  </div>
+
+  <!-- Teaching spinner -->
+  <div id="teaching-spinner" class="card-panel text-center" style="display:none;padding:3rem;">
+    <div class="spinner" style="width:40px;height:40px;border-width:3px;"></div>
+    <h3 style="margin-top:1rem;color:var(--accent-orange);">Running 3 Models...</h3>
+    <p class="text-secondary">Basic + Enhanced + Full (Enhanced + Asymmetric LR). This takes about 15-30 seconds.</p>
+  </div>
+
+  <!-- Teaching results -->
+  <div id="teaching-results" style="display:none;">
+
+    <!-- The Three Models narrative -->
+    <div class="narrative fade-in">
+      <h4>The Three Models: A Progression of Cognitive Mechanisms</h4>
+      <p>Each model below adds mechanisms to the previous one. Think of this as <strong>building up a theory of how the mind performs the WCST</strong>, one piece at a time.</p>
+    </div>
+
+    <div class="row fade-in">
+      <div class="col-md-4">
+        <div class="model-card basic-card">
+          <h5 style="color:var(--accent-blue);">1. Basic Model</h5>
+          <p><strong>Mechanism:</strong> Utility learning only</p>
+          <p>Three production rules compete to sort by colour, shape, or number. After each trial, the chosen rule's <em>utility</em> (expected value) is updated based on the reward received. Correct sorts increase utility; incorrect sorts decrease it. The rule with the highest utility (plus noise) fires next.</p>
+          <p><strong>Analogy:</strong> Imagine a person who can only learn through trial and error, with no memory of what they already tried. They adjust their preferences slowly based on success and failure.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="model-card enhanced-card">
+          <h5 style="color:var(--accent-purple);">2. Enhanced Model</h5>
+          <p><strong>Adds:</strong> Hypothesis tracking + attentional lapses + set decay</p>
+          <p><em>Hypothesis tracking</em>: After errors, the model recalls which rules failed before and avoids them. <em>Attentional lapses</em>: Occasionally picks a random rule (modelling distraction). <em>Set decay</em>: Even during a winning streak, the model sometimes "forgets" its current strategy.</p>
+          <p><strong>Analogy:</strong> Now our person has a notepad to track failed hypotheses, but sometimes daydreams or loses their place.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="model-card full-card">
+          <h5 style="color:var(--accent-red);">3. Full Model</h5>
+          <p><strong>Adds:</strong> Asymmetric learning rates</p>
+          <p>Errors are weighted 1.8x more strongly than successes when updating utility. This captures the psychological finding that <em>negative feedback is more salient than positive feedback</em> -- a form of loss aversion applied to cognitive strategy selection.</p>
+          <p><strong>Analogy:</strong> Our person now pays extra attention to mistakes, learning more quickly from "that was wrong" than from "that was right" (Bishara et al., 2010).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RMSD Overview -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-orange);">Goodness of Fit: RMSD Comparison</h3>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem;">
+        RMSD (Root Mean Square Deviation) measures how far each model's predictions are from the human data.
+        Lower is better. Values are normalized by human standard deviation, so 1.0 means the model is off by exactly 1 SD.
+      </p>
+      <div class="rmsd-container" id="teach-rmsd-container"></div>
+    </div>
+
+    <!-- Narrative: Reading the RMSD -->
+    <div class="narrative fade-in">
+      <h4>What Do the RMSD Numbers Tell Us?</h4>
+      <p>The RMSD is computed across 7 key WCST measures: categories completed, total errors, perseverative errors, non-perseverative errors, trials to complete the first category, conceptual level responses, and failure to maintain set. Each measure is normalised by the human standard deviation, so RMSD = 1.0 means the model is off by 1 SD on average.</p>
+
+      <div class="model-note basic-note" style="margin:0.6rem 0;padding:0.5rem 0.75rem;border-radius:6px;">
+        <span class="model-tag tag-b">BASIC</span> <strong>Highest RMSD.</strong> <span class="why-arrow">Why?</span> With only utility learning, the model gets the general pattern right (categories completed, rough error counts) but overshoots on perseverative errors and undershoots on non-perseverative errors and failure-to-maintain-set. The missing cognitive mechanisms show up as a large overall distance from human data.
+      </div>
+      <div class="model-note enhanced-note" style="margin:0.6rem 0;padding:0.5rem 0.75rem;border-radius:6px;">
+        <span class="model-tag tag-e">ENHANCED</span> <strong>Lower RMSD.</strong> <span class="why-arrow">Why?</span> Adding hypothesis tracking reduces perseverative errors (closer to human), attentional lapses increase non-perseverative errors (closer to human), and set decay produces failure-to-maintain-set events (closer to human). Three separate mechanisms each improve a different measure.
+      </div>
+      <div class="model-note full-note" style="margin:0.6rem 0;padding:0.5rem 0.75rem;border-radius:6px;">
+        <span class="model-tag tag-f">FULL</span> <strong>Lowest RMSD.</strong> <span class="why-arrow">Why?</span> Asymmetric learning rates primarily improve perseverative errors (the biggest contributor to RMSD) by making the model abandon wrong rules faster. This single mechanism targets the measure where the Enhanced model still had the most room for improvement.
+      </div>
+
+      <div class="insight-box">
+        <strong>Key insight:</strong> The progression from Basic to Enhanced to Full illustrates a core principle of cognitive modelling: <em>each mechanism in the architecture has a specific job</em>. You cannot get the full picture with a single learning rule -- you need multiple interacting systems, just as the brain has multiple interacting regions.
+      </div>
+    </div>
+
+    <!-- Summary Stats Table -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-orange);">Summary Statistics: All Three Models vs Human Data</h3>
+      <table class="stat-table" id="teach-summary-table">
+        <thead>
+          <tr>
+            <th>Measure</th>
+            <th style="color:var(--accent-blue);">Basic</th>
+            <th style="color:var(--accent-purple);">Enhanced</th>
+            <th style="color:var(--accent-red);">Full</th>
+            <th style="color:var(--accent-green);">Human</th>
+            <th style="color:var(--accent-green);">Human SD</th>
+          </tr>
+        </thead>
+        <tbody id="teach-summary-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Narrative: Reading the table -->
+    <div class="narrative fade-in">
+      <h4>Reading the Summary Table</h4>
+      <p>The green-highlighted cells show which model is closest to the human value for each measure. Let's walk through the key measures:</p>
+
+      <h5>Perseverative Errors (PE)</h5>
+      <p>This is the <strong>most important WCST measure</strong>. A perseverative error occurs when the participant keeps sorting by a rule that is no longer correct. The human average is <strong>11.5</strong> errors.</p>
+      <p>The Basic model typically overshoots this (too many perseverative errors) because it can only "unlearn" the old rule through repeated negative feedback -- it has no way to remember what it already tried. The Enhanced model reduces PE by using hypothesis tracking to suppress previously-failed rules. The Full model reduces PE further because asymmetric learning rates mean the model reacts more strongly to errors, speeding up rule-switching.</p>
+
+      <h5>Non-Perseverative Errors (NPE)</h5>
+      <p>These are "random" errors -- sorting incorrectly but <em>not</em> by the previously-correct rule. The human average is <strong>8.7</strong>. The Basic model tends to produce too few NPE because it has no source of random errors. The Enhanced model produces more NPE due to its attentional lapse mechanism, which occasionally causes random rule selection.</p>
+
+      <h5>Failure to Maintain Set (FMS)</h5>
+      <p>This measures how often a participant makes an error after getting 5+ consecutive correct sorts -- essentially "losing the plot" mid-streak. Humans average <strong>0.66</strong>. The Enhanced model's set-decay mechanism produces this behaviour: even during a winning streak, there is a small probability the model forgets its current strategy.</p>
+
+      <h5>Conceptual Level Responses (CLR%)</h5>
+      <p>The percentage of responses that occur in runs of 3+ consecutive correct sorts. This measures sustained correct performance. Humans average <strong>78.3%</strong>. A higher CLR% means the model can reliably maintain a strategy once found.</p>
+    </div>
+
+    <!-- Bar chart: 4-way comparison -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-orange);">Key Metrics: Four-Way Comparison</h3>
+      <div class="chart-container" style="height:400px;">
+        <canvas id="teach-chart-bar"></canvas>
+      </div>
+
+      <div class="chart-explainer">
+        <div class="explainer-title">How to read this chart</div>
+        <p>Each cluster of 4 bars is one WCST measure. The <span style="color:var(--accent-green);font-weight:600;">green bar</span> is the human target -- you want model bars to match it.</p>
+
+        <div class="explainer-title" style="margin-top:1rem;">Why the models differ -- metric by metric</div>
+
+        <p style="font-weight:600;color:var(--text-primary);margin-top:0.6rem;">Total Errors</p>
+        <div class="model-note basic-note">
+          <span class="model-tag tag-b">BASIC</span> <strong>Highest total errors.</strong> With only reward-based learning and no way to remember what was tried before, the model wastes many trials re-testing rules that already failed. Every rule switch costs ~5-8 extra trials of "unlearning."
+        </div>
+        <div class="model-note enhanced-note">
+          <span class="model-tag tag-e">ENHANCED</span> <strong>Fewer errors overall</strong>, but gains some non-perseverative errors from attentional lapses. The net effect is lower total errors because hypothesis tracking eliminates many wasted trials after rule switches.
+        </div>
+        <div class="model-note full-note">
+          <span class="model-tag tag-f">FULL</span> <strong>Fewest errors.</strong> Asymmetric learning rates mean errors pack 1.8x the punch of successes. The model "hears" negative feedback louder, so it abandons wrong rules faster. This is the closest to human.
+        </div>
+
+        <p style="font-weight:600;color:var(--text-primary);margin-top:1rem;">Perseverative Errors</p>
+        <div class="model-note basic-note">
+          <span class="model-tag tag-b">BASIC</span> <strong>Way too many.</strong> <span class="why-arrow">Why?</span> After 10 correct sorts on one rule, its utility is very high. When the rule changes, the only way to switch is through repeated punishment -- which takes many trials. The model has no "insight" that the rule has changed.
+        </div>
+        <div class="model-note enhanced-note">
+          <span class="model-tag tag-e">ENHANCED</span> <strong>Reduced.</strong> <span class="why-arrow">Why?</span> Hypothesis tracking means that after an error, the model checks declarative memory: "Have I tried this rule before and failed?" If yes, it suppresses that rule and boosts untried alternatives. This is like a human thinking "colour stopped working -- let me try shape instead."
+        </div>
+        <div class="model-note full-note">
+          <span class="model-tag tag-f">FULL</span> <strong>Closest to human.</strong> <span class="why-arrow">Why?</span> On top of hypothesis tracking, errors now cause a 1.8x stronger utility drop. The previously-correct rule's utility crashes faster, letting alternative rules overtake it sooner. Fewer trials are wasted perseverating.
+        </div>
+
+        <p style="font-weight:600;color:var(--text-primary);margin-top:1rem;">Non-Perseverative Errors</p>
+        <div class="model-note basic-note">
+          <span class="model-tag tag-b">BASIC</span> <strong>Too few.</strong> <span class="why-arrow">Why?</span> The basic model is purely deterministic (plus utility noise). It has no source of random errors -- it never "spaces out" or makes careless mistakes.
+        </div>
+        <div class="model-note enhanced-note">
+          <span class="model-tag tag-e">ENHANCED</span> <strong>Closer to human.</strong> <span class="why-arrow">Why?</span> The attentional lapse mechanism randomly selects a rule ~4% of the time, regardless of utility. These random selections produce non-perseverative errors -- mimicking how real humans occasionally lose focus during a long, repetitive task.
+        </div>
+
+        <p style="font-weight:600;color:var(--text-primary);margin-top:1rem;">Failure to Maintain Set</p>
+        <div class="model-note basic-note">
+          <span class="model-tag tag-b">BASIC</span> <strong>Near zero.</strong> <span class="why-arrow">Why?</span> Once the model locks onto the correct rule, utility noise almost never disrupts it. The model never "forgets" its current strategy.
+        </div>
+        <div class="model-note enhanced-note">
+          <span class="model-tag tag-e">ENHANCED</span> <strong>Present.</strong> <span class="why-arrow">Why?</span> Set maintenance decay occasionally pulls the winning rule's utility back toward baseline, even during a correct streak. This models the real-world phenomenon of working memory maintenance failure -- you know the rule, but sometimes you just lose track of it.
+        </div>
+
+        <p style="font-weight:600;color:var(--text-primary);margin-top:1rem;">Conceptual Level Responses (%)</p>
+        <div class="model-note human-note">
+          <span class="model-tag tag-h">HUMAN</span> Humans average ~78%. This measures sustained correct performance (runs of 3+ correct in a row). All three models tend to be within range of the human value, because once any model finds the correct rule, it maintains it well. Differences here reflect how quickly the model discovers the rule after each switch.
+        </div>
+      </div>
+    </div>
+
+    <div class="narrative fade-in">
+      <div class="think-box">
+        <strong>Think about it:</strong> Which measure shows the biggest difference between models? Which measure do all three models struggle with equally? What does this tell you about which cognitive mechanisms matter most for each aspect of WCST performance?
+      </div>
+    </div>
+
+    <!-- Error breakdown -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-orange);">Error Breakdown: Perseverative vs Non-Perseverative</h3>
+      <div class="chart-container" style="height:340px;">
+        <canvas id="teach-chart-errors"></canvas>
+      </div>
+
+      <div class="chart-explainer">
+        <div class="explainer-title">How to read this chart</div>
+        <p>Each stacked bar shows a model's total errors, split into <span style="color:#f87171;font-weight:600;">perseverative</span> (red, bottom) and <span style="color:#fbbf24;font-weight:600;">non-perseverative</span> (yellow, top). Look at both the <em>height</em> of each bar (total errors) and the <em>ratio</em> of red to yellow (error profile).</p>
+
+        <div class="explainer-title" style="margin-top:1rem;">Why the stacked shapes differ</div>
+
+        <div class="model-note basic-note">
+          <span class="model-tag tag-b">BASIC</span> <strong>The bar is almost entirely red.</strong> <span class="why-arrow">Why?</span> This model only makes errors when it perseverates on a previously-correct rule. It has no mechanism to produce random errors. Its error profile is <em>too clean</em> compared to humans -- real people have a messier mix of error types.
+        </div>
+        <div class="model-note enhanced-note">
+          <span class="model-tag tag-e">ENHANCED</span> <strong>The yellow portion grows.</strong> <span class="why-arrow">Why?</span> Two things happen: (1) hypothesis tracking shrinks the red portion by reducing perseveration, and (2) attentional lapses add yellow errors. The model now "spaces out" ~4% of the time, picking a random rule. These accidental errors are non-perseverative because they are not repeating the old rule -- they are random mistakes.
+        </div>
+        <div class="model-note full-note">
+          <span class="model-tag tag-f">FULL</span> <strong>Red shrinks further, ratio approaches human.</strong> <span class="why-arrow">Why?</span> Asymmetric learning accelerates rule-switching, which reduces the perseverative portion even more. The bar height and ratio should now closely match the green human bar.
+        </div>
+        <div class="model-note human-note">
+          <span class="model-tag tag-h">HUMAN</span> <strong>~57% perseverative, ~43% non-perseverative.</strong> The relatively high non-perseverative rate in humans reflects attentional lapses, exploratory hypothesis testing, and occasional confusion -- cognitive "noise" that a purely rational model would not produce.
+        </div>
+      </div>
+    </div>
+
+    <!-- Post-switch accuracy -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-orange);">Post-Switch Recovery Curve</h3>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">
+        How quickly does each model recover after the sorting rule changes?
+      </p>
+      <div class="chart-container" style="height:380px;">
+        <canvas id="teach-chart-postswitch"></canvas>
+      </div>
+
+      <div class="chart-explainer">
+        <div class="explainer-title">How to read this chart</div>
+        <p>The x-axis shows <em>trials after a rule switch</em> (averaged across all 5 rule switches). The y-axis shows accuracy (0 = always wrong, 1 = always right). A steeper upward curve = faster recovery = less perseveration. The <span style="color:var(--accent-green);font-weight:600;">dashed green line</span> is the human benchmark.</p>
+
+        <div class="explainer-title" style="margin-top:1rem;">Why the recovery speeds differ</div>
+
+        <p><strong>Trial 1:</strong> All models start near 0% accuracy. <span class="why-arrow">Why?</span> The old rule just produced 10+ correct sorts in a row. Every model (and every human) tries it again first. This is not a failure -- it is rational given the information available.</p>
+
+        <div class="model-note basic-note">
+          <span class="model-tag tag-b">BASIC</span> <strong>Slowest recovery (flattest early curve).</strong> <span class="why-arrow">Why?</span> The model must "unlearn" the old rule purely through repeated punishment. Each incorrect trial reduces the old rule's utility by a small amount. It takes ~5-7 trials of punishment before the old rule's utility drops below alternatives. The model is effectively "stuck" until the maths works out -- it has no strategic insight.
+        </div>
+        <div class="model-note enhanced-note">
+          <span class="model-tag tag-e">ENHANCED</span> <strong>Faster recovery (steeper rise around trials 2-4).</strong> <span class="why-arrow">Why?</span> After the first error, hypothesis tracking kicks in. The model recalls from declarative memory: "I just failed with colour. What have I not tried?" It then boosts the utility of untried rules, creating a shortcut that bypasses the slow unlearning process. This is analogous to a human switching hypotheses: "If colour is wrong, let me try shape."
+        </div>
+        <div class="model-note full-note">
+          <span class="model-tag tag-f">FULL</span> <strong>Fastest recovery (closest to the green human line).</strong> <span class="why-arrow">Why?</span> In addition to hypothesis tracking, each error now delivers a 1.8x stronger blow to utility. The old rule's high utility gets demolished in just 2-3 errors instead of 5-7. Combined with the hypothesis boost for untried rules, the model can switch in as few as 2-3 trials -- almost as fast as humans.
+        </div>
+        <div class="model-note human-note">
+          <span class="model-tag tag-h">HUMAN</span> <strong>Fastest of all, especially at trials 2-3.</strong> <span class="why-arrow">Why?</span> Humans have additional advantages the model does not fully capture: explicit hypothesis testing ("the rule must have changed"), working memory for recently-tried dimensions, and metacognitive awareness ("I know this test changes rules"). Some researchers believe humans can switch in as few as 1-2 trials using these deliberate strategies.
+        </div>
+      </div>
+    </div>
+
+    <div class="narrative fade-in">
+      <div class="think-box">
+        <strong>Think about it:</strong> If you were designing a cognitive model of someone with frontal lobe damage, what would you change? Frontal patients show very flat recovery curves -- they keep perseverating for many more trials. <em>Hint:</em> The prefrontal cortex supports both hypothesis testing (Enhanced model's DM mechanism) and learning from negative feedback (Full model's asymmetric LR). Disabling these mechanisms in the model would produce the flat curve seen in frontal patients.
+      </div>
+    </div>
+
+    <!-- Trial accuracy -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-orange);">Trial-by-Trial Accuracy
+        <span class="info-badge">smoothed, 5-trial window</span>
+      </h3>
+      <div class="chart-container" style="height:380px;">
+        <canvas id="teach-chart-trial"></canvas>
+      </div>
+
+      <div class="chart-explainer">
+        <div class="explainer-title">How to read this chart</div>
+        <p>The x-axis is trial number (1-128). The y-axis is accuracy (averaged over all simulations). Look for the <strong>sawtooth pattern</strong>: accuracy rises as the model learns a rule, then drops sharply when the rule changes. Each "dip" = one rule switch. You should see 5 dips (6 categories, 5 transitions).</p>
+
+        <div class="explainer-title" style="margin-top:1rem;">What to look for in each model's line</div>
+
+        <div class="model-note basic-note">
+          <span class="model-tag tag-b">BASIC</span> <strong>Deepest, widest dips.</strong> <span class="why-arrow">Why?</span> Each rule switch creates a deep valley because the model must slowly unlearn the old rule through repeated punishment. The "valleys" are wide (spanning many trials) because recovery is slow. Notice the first dip is especially wide -- the model has never experienced a rule switch before and has no prior experience to draw on.
+        </div>
+        <div class="model-note enhanced-note">
+          <span class="model-tag tag-e">ENHANCED</span> <strong>Shallower dips, quicker recovery.</strong> <span class="why-arrow">Why?</span> Hypothesis tracking means the model can jump to an untried rule after just 1-2 errors, so the valleys are narrower. However, you may also notice the "peaks" between dips are slightly lower than the Basic model -- this is because attentional lapses occasionally pull accuracy down even when the model knows the correct rule.
+        </div>
+        <div class="model-note full-note">
+          <span class="model-tag tag-f">FULL</span> <strong>Shallowest dips, fastest recovery.</strong> <span class="why-arrow">Why?</span> Asymmetric learning rates make each error cut deep into utility, so the old rule gets abandoned faster. The valleys are both shallower (less time at 0% accuracy) and narrower (fewer trials to recover).
+        </div>
+
+        <p style="margin-top:0.75rem;"><strong>Look for "learning-to-learn":</strong> In later rule switches (right side of the chart), the dips may be shallower than the early ones. <span class="why-arrow">Why?</span> Rules that were correct before (e.g., colour in category 1) retain residual utility. When colour becomes correct again in category 4, the model already has a head start -- it does not need to learn from zero. This implicit benefit of prior experience is a form of <em>transfer learning</em>.</p>
+      </div>
+    </div>
+
+    <div class="narrative fade-in">
+      <div class="think-box">
+        <strong>Think about it:</strong> If you smoothed the curve with a larger window (say 15 trials), the sawtooth would disappear and you would see a general upward trend. What does this mean psychologically? It suggests that over the full 128 trials, the model is getting better at the task overall -- not just at each individual rule, but at the <em>process</em> of switching rules. This is a hallmark of executive function.
+      </div>
+    </div>
+
+    <!-- Utility traces for each model -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-orange);">Utility Traces (Single Representative Simulation)
+        <span class="info-badge" id="teach-util-model-label">Basic</span>
+      </h3>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem;">
+        Select which model's utility trace to view. Switch between models to see how the same internal process looks different:
+      </p>
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <button class="btn-run" id="teach-util-btn-basic" onclick="showTeachingUtility('basic')" style="width:auto;padding:0.4rem 1rem;font-size:0.82rem;background:var(--accent-blue);">Basic</button>
+        <button class="btn-run" id="teach-util-btn-enhanced" onclick="showTeachingUtility('enhanced')" style="width:auto;padding:0.4rem 1rem;font-size:0.82rem;background:#3a3e52;">Enhanced</button>
+        <button class="btn-run" id="teach-util-btn-full" onclick="showTeachingUtility('full')" style="width:auto;padding:0.4rem 1rem;font-size:0.82rem;background:#3a3e52;">Full</button>
+      </div>
+      <div class="chart-container" style="height:340px;">
+        <canvas id="teach-chart-utilities"></canvas>
+      </div>
+
+      <div class="chart-explainer">
+        <div class="explainer-title">How to read this chart</div>
+        <p>Each coloured line tracks the <em>utility value</em> of one production rule (<span style="color:#f87171;font-weight:600;">colour</span>, <span style="color:#4ade80;font-weight:600;">shape</span>, <span style="color:#fbbf24;font-weight:600;">number</span>) across all 128 trials. <strong>The rule with the highest utility at any given trial wins and gets selected.</strong> Think of utility as the model's "confidence" in each rule.</p>
+
+        <p style="margin-top:0.6rem;"><strong>Visual guide to the WCST rule sequence:</strong></p>
+        <p style="font-size:0.82rem;font-family:monospace;color:var(--text-primary);background:#151829;padding:0.5rem 0.75rem;border-radius:6px;">
+          Trials 1-10+: <span style="color:#f87171;">COLOUR</span> &rarr;
+          then <span style="color:#4ade80;">SHAPE</span> &rarr;
+          then <span style="color:#fbbf24;">NUMBER</span> &rarr;
+          then <span style="color:#f87171;">COLOUR</span> &rarr;
+          then <span style="color:#4ade80;">SHAPE</span> &rarr;
+          then <span style="color:#fbbf24;">NUMBER</span>
+        </p>
+
+        <div class="explainer-title" style="margin-top:1rem;">What to look for when switching between models</div>
+
+        <div class="model-note basic-note">
+          <span class="model-tag tag-b">BASIC</span> <strong>Click "Basic" and look for:</strong>
+          <ul style="margin:0.3rem 0 0;padding-left:1.2rem;">
+            <li><strong>Slow crossovers:</strong> When the correct rule changes, the old rule's line descends slowly while the new rule's line climbs. The gap between the descending and ascending lines stays large for many trials -- this is perseveration visualised.</li>
+            <li><strong>Symmetric slopes:</strong> Lines go up at roughly the same rate they come down. Successes and failures have equal weight.</li>
+            <li><strong>Large utility gaps:</strong> After 10 correct sorts, the winning rule is far above the others. This large gap is what makes switching so hard.</li>
+          </ul>
+        </div>
+        <div class="model-note enhanced-note">
+          <span class="model-tag tag-e">ENHANCED</span> <strong>Click "Enhanced" and compare:</strong>
+          <ul style="margin:0.3rem 0 0;padding-left:1.2rem;">
+            <li><strong>Sharper crossovers:</strong> When the rule changes, you should see the new rule's line jump upward more quickly. This is hypothesis tracking: after an error, untried rules get a utility boost, creating visible "kicks" upward.</li>
+            <li><strong>Occasional dips in the winning line:</strong> Even during correct streaks, you may see brief downward spikes. These are set-decay events where the model momentarily "forgets" its strategy.</li>
+            <li><strong>More jitter in all lines:</strong> The attentional lapse mechanism occasionally selects non-winning rules, which gives them small utility updates and creates noisier traces.</li>
+          </ul>
+        </div>
+        <div class="model-note full-note">
+          <span class="model-tag tag-f">FULL</span> <strong>Click "Full" and notice the key difference:</strong>
+          <ul style="margin:0.3rem 0 0;padding-left:1.2rem;">
+            <li><strong>Asymmetric slopes -- this is the signature pattern.</strong> Lines fall steeply (errors hit 1.8x harder) but rise more gently (successes have normal weight). Visually, the "V-shapes" at rule switches are lopsided: fast descent, gradual ascent.</li>
+            <li><strong>Faster crossovers:</strong> The old rule's utility crashes quickly, so alternative rules catch up in fewer trials. Crossovers happen in 2-3 trials instead of 5-7.</li>
+            <li><strong>Narrower utility gaps:</strong> Because the winning rule gets punished harder when it fails, the gap between rules is smaller. Smaller gaps = easier switching = less perseveration.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Final summary -->
+    <div class="narrative fade-in">
+      <h4>What Have We Learned?</h4>
+      <p>This modelling exercise demonstrates several important principles from cognitive psychology:</p>
+      <ul>
+        <li><strong>Perseveration is an emergent property</strong> of reward-based learning, not a separate mechanism that needs to be programmed in.</li>
+        <li><strong>Utility learning alone is insufficient</strong> to explain the full pattern of human WCST performance -- we also need hypothesis tracking, attentional noise, and asymmetric error processing.</li>
+        <li><strong>Each additional mechanism serves a specific function:</strong> hypothesis tracking reduces perseveration, attentional lapses produce non-perseverative errors, and asymmetric learning rates speed up recovery after rule switches.</li>
+        <li><strong>The systematic mismatches between model and human data</strong> are informative -- they tell us what additional cognitive processes might be involved.</li>
+      </ul>
+
+      <h5>Clinical Implications</h5>
+      <p>This model framework can be extended to clinical populations by adjusting specific parameters:</p>
+      <ul>
+        <li><strong>Frontal lobe damage:</strong> Reduce the learning rate (&alpha;) to model slower adaptation to feedback, or remove hypothesis tracking to simulate impaired strategic thinking.</li>
+        <li><strong>ADHD:</strong> Increase attentional lapse rate and set-decay probability to model sustained attention difficulties.</li>
+        <li><strong>Healthy ageing:</strong> Slightly reduce all parameters, reflecting general cognitive slowing.</li>
+      </ul>
+
+      <h5>References</h5>
+      <p style="font-size:0.82rem;">
+        Anderson, J.R. & Lebiere, C. (1998). <em>The Atomic Components of Thought</em>. Lawrence Erlbaum.<br>
+        Bishara, A.J. et al. (2010). Sequential learning models for the WCST. <em>Journal of Mathematical Psychology</em>, 54(1), 5-13.<br>
+        Heaton, R.K. et al. (1993). <em>Wisconsin Card Sorting Test Manual: Revised and Expanded</em>. PAR.<br>
+        Lovett, M.C. (2005). A strategy-based interpretation of Stroop. <em>Cognitive Science</em>, 29(3), 493-524.<br>
+        Nyhus, E. & Barcelo, F. (2009). The WCST and the cognitive assessment of prefrontal executive functions. <em>Brain and Cognition</em>, 71(3), 437-451.
+      </p>
+    </div>
+
+  </div><!-- teaching-results -->
+  <div id="teach-elapsed" class="elapsed-info"></div>
+
+</div><!-- container -->
+</div><!-- tab-teaching -->
+
+
+<!-- ================================================================ -->
+<!-- TAB 3: OPTIMIZATION                                              -->
+<!-- ================================================================ -->
+<div id="tab-optimize" class="tab-content">
+<div class="container py-4">
+
+  <!-- Run button -->
+  <div class="card-panel text-center" id="opt-controls">
+    <h3 style="color:var(--accent-cyan);">Bayesian Parameter Optimization</h3>
+    <p style="color:var(--text-secondary);font-size:0.9rem;">
+      Uses <strong>Optuna's TPE</strong> (Tree-structured Parzen Estimator) to intelligently search all 9 model parameters.
+      Three key improvements over grid search:
+    </p>
+    <div style="text-align:left;max-width:600px;margin:0.5rem auto;font-size:0.82rem;color:var(--text-secondary);">
+      <p style="margin:0.3rem 0;"><strong style="color:var(--accent-cyan);">1. Bayesian search</strong> -- learns which parameter regions are promising and focuses exploration there (150 intelligent trials vs 102 blind grid points)</p>
+      <p style="margin:0.3rem 0;"><strong style="color:var(--accent-cyan);">2. Common Random Numbers</strong> -- all candidates use identical random seeds, dramatically reducing noise in comparisons</p>
+      <p style="margin:0.3rem 0;"><strong style="color:var(--accent-cyan);">3. Composite objective</strong> -- fits summary stats (50%), post-switch recovery curve (30%), and trial-by-trial accuracy (20%) simultaneously</p>
+    </div>
+    <p style="color:var(--text-secondary);font-size:0.82rem;margin-top:0.5rem;">
+      Takes 3-6 minutes. Compares <strong style="color:var(--accent-cyan);">Optimized</strong> vs <strong style="color:var(--accent-red);">Default</strong> vs <strong style="color:var(--accent-green);">Human</strong>.
+    </p>
+    <button class="btn-run" id="btn-optimize" onclick="runOptimize()" style="max-width:400px;margin:0.75rem auto 0;background:var(--accent-cyan);color:#0f1117;">
+      Run Bayesian Optimization
+    </button>
+  </div>
+
+  <!-- Spinner -->
+  <div id="opt-spinner" class="card-panel text-center" style="display:none;padding:3rem;">
+    <div class="spinner" style="width:40px;height:40px;border-width:3px;"></div>
+    <h3 style="margin-top:1rem;color:var(--accent-cyan);">Running Bayesian Optimization...</h3>
+    <p class="text-secondary">150 TPE trials with CRN + composite objective, then full evaluation. ~3-6 minutes.</p>
+  </div>
+
+  <!-- Results -->
+  <div id="opt-results" style="display:none;">
+
+    <!-- Parameter comparison table -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Parameter Comparison: Default vs Optimized</h3>
+      <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem;">
+        Parameters that changed are highlighted. The grid search tested
+        <span id="opt-combos-tested" style="color:var(--accent-cyan);font-weight:700;">--</span> parameter combinations.
+      </p>
+      <table class="stat-table" id="opt-param-table">
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th style="color:var(--accent-red);">Default</th>
+            <th style="color:var(--accent-cyan);">Optimized</th>
+            <th>Change</th>
+          </tr>
+        </thead>
+        <tbody id="opt-param-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- RMSD Comparison -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Goodness of Fit: RMSD</h3>
+      <div class="rmsd-container" id="opt-rmsd-container"></div>
+    </div>
+
+    <!-- Composite RMSD Breakdown -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Composite Objective Breakdown
+        <span class="info-badge">50% summary + 30% post-switch + 20% trial curve</span>
+      </h3>
+      <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:1rem;">
+        The optimizer minimizes a weighted composite of three RMSD components.
+        Lower bars = better fit to human data on that dimension.
+      </p>
+      <div class="chart-container" style="height:300px;">
+        <canvas id="opt-chart-composite"></canvas>
+      </div>
+    </div>
+
+    <!-- Summary Stats Table -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Summary Statistics: Default vs Optimized vs Human</h3>
+      <table class="stat-table" id="opt-summary-table">
+        <thead>
+          <tr>
+            <th>Measure</th>
+            <th style="color:var(--accent-red);">Default Full</th>
+            <th style="color:var(--accent-cyan);">Optimized</th>
+            <th style="color:var(--accent-green);">Human</th>
+            <th style="color:var(--accent-green);">Human SD</th>
+          </tr>
+        </thead>
+        <tbody id="opt-summary-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Bar chart: 3-way comparison -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Key Metrics: Default vs Optimized vs Human</h3>
+      <div class="chart-container" style="height:400px;">
+        <canvas id="opt-chart-bar"></canvas>
+      </div>
+    </div>
+
+    <!-- Error breakdown -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Error Breakdown: Perseverative vs Non-Perseverative</h3>
+      <div class="chart-container" style="height:340px;">
+        <canvas id="opt-chart-errors"></canvas>
+      </div>
+    </div>
+
+    <!-- Post-switch accuracy -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Post-Switch Recovery Curve</h3>
+      <div class="chart-container" style="height:380px;">
+        <canvas id="opt-chart-postswitch"></canvas>
+      </div>
+    </div>
+
+    <!-- Trial accuracy -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Trial-by-Trial Accuracy
+        <span class="info-badge">smoothed, 5-trial window</span>
+      </h3>
+      <div class="chart-container" style="height:380px;">
+        <canvas id="opt-chart-trial"></canvas>
+      </div>
+    </div>
+
+    <!-- Utility traces -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Utility Traces
+        <span class="info-badge" id="opt-util-model-label">Default</span>
+      </h3>
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+        <button class="btn-run" id="opt-util-btn-default" onclick="showOptUtility('default_run')" style="width:auto;padding:0.4rem 1rem;font-size:0.82rem;background:var(--accent-red);">Default</button>
+        <button class="btn-run" id="opt-util-btn-optimized" onclick="showOptUtility('optimized')" style="width:auto;padding:0.4rem 1rem;font-size:0.82rem;background:#3a3e52;">Optimized</button>
+      </div>
+      <div class="chart-container" style="height:340px;">
+        <canvas id="opt-chart-utilities"></canvas>
+      </div>
+    </div>
+
+    <!-- Top-20 trials -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Top 20 Bayesian Trials
+        <span class="info-badge">ranked by composite RMSD</span>
+      </h3>
+      <div class="chart-container" style="height:360px;">
+        <canvas id="opt-chart-grid"></canvas>
+      </div>
+    </div>
+
+    <!-- Convergence curve -->
+    <div class="card-panel fade-in">
+      <h3 style="color:var(--accent-cyan);">Optimization Convergence
+        <span class="info-badge">best composite RMSD vs trial number</span>
+      </h3>
+      <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:1rem;">
+        Shows how the best objective value decreases as the TPE sampler explores the parameter space.
+        The first ~20 trials are random (startup phase), then Bayesian exploration kicks in.
+      </p>
+      <div class="chart-container" style="height:320px;">
+        <canvas id="opt-chart-convergence"></canvas>
+      </div>
+    </div>
+
+    <!-- Search config info -->
+    <div class="card-panel fade-in" id="opt-search-config" style="font-size:0.82rem;color:var(--text-secondary);">
+    </div>
+
+  </div><!-- opt-results -->
+  <div id="opt-elapsed" class="elapsed-info"></div>
+
+</div><!-- container -->
+</div><!-- tab-optimize -->
+
+
+<script>
+// ====================================================================
+// GLOBAL STATE
+// ====================================================================
+let charts = {};
+let cachedData = null;
+let teachingData = null;
+let teachingCharts = {};
+
+// Chart.js defaults for dark theme
+Chart.defaults.color = '#8b8fa3';
+Chart.defaults.borderColor = '#2a2e42';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size = 11;
+
+// ====================================================================
+// TAB NAVIGATION
+// ====================================================================
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tabName).classList.add('active');
+  const btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(btn => {
+    if ((tabName === 'research' && !btn.classList.contains('teaching-tab') && !btn.classList.contains('optimize-tab')) ||
+        (tabName === 'teaching' && btn.classList.contains('teaching-tab')) ||
+        (tabName === 'optimize' && btn.classList.contains('optimize-tab'))) {
+      btn.classList.add('active');
+    }
+  });
+}
+
+// ====================================================================
+// SHARED UTILS
+// ====================================================================
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+function smoothArray(arr, window) {
+  const result = [];
+  for (let i = 0; i < arr.length; i++) {
+    let sum = 0, count = 0;
+    for (let j = Math.max(0, i - Math.floor(window/2)); j <= Math.min(arr.length-1, i + Math.floor(window/2)); j++) {
+      if (arr[j] !== null && arr[j] !== undefined) { sum += arr[j]; count++; }
+    }
+    result.push(count > 0 ? sum / count : null);
+  }
+  return result;
+}
+
+// ====================================================================
+// RESEARCH TAB: Basic vs Enhanced
+// ====================================================================
+async function runSimulation() {
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running...';
+  document.getElementById('loading-placeholder').style.display = 'none';
+  document.getElementById('loading-spinner').style.display = 'block';
+  document.getElementById('results-area').style.display = 'none';
+
+  const params = {};
+  {% for key in params %}
+  params['{{ key }}'] = parseFloat(document.getElementById('param_{{ key }}').value);
+  {% endfor %}
+  params.n_simulations = parseInt(document.getElementById('param_nsims').value);
+  params.seed = 42;
+
+  try {
+    const resp = await fetch('/api/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(params)
+    });
+    const data = await resp.json();
+    cachedData = data;
+    renderResults(data);
+  } catch (err) {
+    alert('Simulation failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Run Both Models';
+    document.getElementById('loading-spinner').style.display = 'none';
+  }
+}
+
+function renderResults(data) {
+  destroyCharts();
+  document.getElementById('results-area').style.display = 'block';
+  document.getElementById('elapsed-info').textContent =
+    `${data.n_simulations} sims x 2 models in ${data.elapsed_seconds}s`;
+
+  renderRMSD(data);
+  renderSummaryTable(data);
+  renderBarChart(data);
+  renderErrorChart(data);
+  renderDistribution(data);
+  renderTrialAccuracy(data);
+  renderPostSwitch(data);
+  renderUtilityTraces(data, false);
+}
+
+function renderRMSD(data) {
+  const basic = data.basic.rmsd;
+  const enhanced = data.enhanced.rmsd;
+  document.getElementById('rmsd-basic').textContent = basic !== null ? basic.toFixed(3) : '--';
+  document.getElementById('rmsd-enhanced').textContent = enhanced !== null ? enhanced.toFixed(3) : '--';
+  if (basic !== null && enhanced !== null) {
+    const pct = ((basic - enhanced) / basic * 100).toFixed(1);
+    const el = document.getElementById('rmsd-improvement');
+    if (enhanced < basic) {
+      el.textContent = `-${pct}%`;
+      el.style.background = 'rgba(74,222,128,0.15)';
+      el.style.color = '#4ade80';
+    } else {
+      el.textContent = `+${Math.abs(pct)}%`;
+      el.style.background = 'rgba(248,113,113,0.15)';
+      el.style.color = '#f87171';
+    }
+  }
+}
+
+function renderSummaryTable(data) {
+  const tbody = document.querySelector('#summary-table tbody');
+  tbody.innerHTML = '';
+  const keys = [
+    'categories_completed', 'total_errors', 'perseverative_errors',
+    'perseverative_responses', 'non_perseverative_errors',
+    'trials_first_category', 'failure_to_maintain_set',
+    'conceptual_level_responses', 'total_trials_used',
+    'percent_errors', 'percent_perseverative_errors'
+  ];
+  keys.forEach(key => {
+    const b = data.basic.model_summary[key];
+    const e = data.enhanced.model_summary[key];
+    const h = data.human_data[key];
+    if (!b || !h) return;
+
+    const bDist = Math.abs(b.mean - h.mean);
+    const eDist = Math.abs(e.mean - h.mean);
+    const bClass = bDist <= eDist ? 'best-fit' : '';
+    const eClass = eDist <= bDist ? 'best-fit' : '';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${h.label || key}</td>
+      <td class="basic-val ${bClass}">${b.mean}</td>
+      <td>${b.sd}</td>
+      <td class="enhanced-val ${eClass}">${e.mean}</td>
+      <td>${e.sd}</td>
+      <td class="human-val">${h.mean}</td>
+      <td>${h.sd}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderBarChart(data) {
+  const keys = ['total_errors','perseverative_errors',
+                'non_perseverative_errors','trials_first_category',
+                'failure_to_maintain_set','conceptual_level_responses'];
+  const labels = keys.map(k => {
+    const h = data.human_data[k];
+    if (!h) return k;
+    return h.label.replace(' Resp. (%)', '%').replace('Non-Perseverative', 'Non-Persev.');
+  });
+  const basicMeans = keys.map(k => data.basic.model_summary[k]?.mean || 0);
+  const enhancedMeans = keys.map(k => data.enhanced.model_summary[k]?.mean || 0);
+  const humanMeans = keys.map(k => data.human_data[k]?.mean || 0);
+
+  const ctx = document.getElementById('chart-bar').getContext('2d');
+  charts.bar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Basic Model',
+          data: basicMeans,
+          backgroundColor: 'rgba(79,140,255,0.6)',
+          borderColor: '#4f8cff',
+          borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Enhanced Model',
+          data: enhancedMeans,
+          backgroundColor: 'rgba(167,139,250,0.6)',
+          borderColor: '#a78bfa',
+          borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Human Data',
+          data: humanMeans,
+          backgroundColor: 'rgba(74,222,128,0.6)',
+          borderColor: '#4ade80',
+          borderWidth: 1, borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'rectRounded' } },
+      },
+      scales: {
+        x: { ticks: { maxRotation: 35, font: { size: 10 } }, grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderErrorChart(data) {
+  const bPE = data.basic.model_summary.perseverative_errors?.mean || 0;
+  const bNPE = data.basic.model_summary.non_perseverative_errors?.mean || 0;
+  const ePE = data.enhanced.model_summary.perseverative_errors?.mean || 0;
+  const eNPE = data.enhanced.model_summary.non_perseverative_errors?.mean || 0;
+  const hPE = data.human_data.perseverative_errors?.mean || 0;
+  const hNPE = data.human_data.non_perseverative_errors?.mean || 0;
+
+  const ctx = document.getElementById('chart-errors').getContext('2d');
+  charts.errors = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Basic', 'Enhanced', 'Human'],
+      datasets: [
+        {
+          label: 'Perseverative',
+          data: [bPE, ePE, hPE],
+          backgroundColor: 'rgba(248,113,113,0.65)',
+          borderColor: '#f87171', borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Non-Perseverative',
+          data: [bNPE, eNPE, hNPE],
+          backgroundColor: 'rgba(251,191,36,0.65)',
+          borderColor: '#fbbf24', borderWidth: 1, borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'rectRounded' } }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, beginAtZero: true, grid: { color: '#2a2e42' }, title: { display: true, text: 'Errors' } }
+      }
+    }
+  });
+}
+
+function renderDistribution(data) {
+  const bValues = data.basic.model_summary.perseverative_errors?.values || [];
+  const eValues = data.enhanced.model_summary.perseverative_errors?.values || [];
+  if (bValues.length === 0 && eValues.length === 0) return;
+
+  const allVals = [...bValues, ...eValues];
+  const min = Math.floor(Math.min(...allVals));
+  const max = Math.ceil(Math.max(...allVals));
+  const binSize = Math.max(1, Math.ceil((max - min) / 12));
+
+  function binify(values) {
+    const bins = {};
+    for (let v of values) {
+      const bin = Math.floor(v / binSize) * binSize;
+      bins[bin] = (bins[bin] || 0) + 1;
+    }
+    return bins;
+  }
+  const bBins = binify(bValues);
+  const eBins = binify(eValues);
+
+  const allKeys = new Set([...Object.keys(bBins), ...Object.keys(eBins)]);
+  const sortedKeys = [...allKeys].map(Number).sort((a, b) => a - b);
+  const labels = sortedKeys.map(b => `${b}-${b + binSize - 1}`);
+  const bCounts = sortedKeys.map(b => bBins[b] || 0);
+  const eCounts = sortedKeys.map(b => eBins[b] || 0);
+
+  const humanMean = data.human_data.perseverative_errors?.mean || 11.5;
+
+  const ctx = document.getElementById('chart-distribution').getContext('2d');
+  charts.dist = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Basic Model',
+          data: bCounts,
+          backgroundColor: 'rgba(79,140,255,0.5)',
+          borderColor: '#4f8cff', borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Enhanced Model',
+          data: eCounts,
+          backgroundColor: 'rgba(167,139,250,0.5)',
+          borderColor: '#a78bfa', borderWidth: 1, borderRadius: 4,
+        }
+      ]
+    },
+    plugins: [{
+      afterDraw: function(chart) {
+        const ctx2 = chart.ctx;
+        const xScale = chart.scales.x;
+        const yScale = chart.scales.y;
+        ctx2.save();
+        ctx2.strokeStyle = '#4ade80';
+        ctx2.lineWidth = 2;
+        ctx2.setLineDash([5, 3]);
+        const humanBin = Math.floor(humanMean / binSize) * binSize;
+        const binIdx = sortedKeys.indexOf(humanBin);
+        if (binIdx >= 0) {
+          const x = xScale.getPixelForValue(binIdx);
+          ctx2.beginPath();
+          ctx2.moveTo(x, yScale.top);
+          ctx2.lineTo(x, yScale.bottom);
+          ctx2.stroke();
+          ctx2.fillStyle = '#4ade80';
+          ctx2.font = '11px Inter';
+          ctx2.fillText(`Human: ${humanMean}`, x + 5, yScale.top + 15);
+        }
+        ctx2.restore();
+      }
+    }],
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'rectRounded' } },
+        title: { display: true, text: 'Perseverative Errors Distribution', font: { size: 12 } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Perseverative Errors' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Count' }, beginAtZero: true, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderTrialAccuracy(data) {
+  const bRaw = data.basic.trial_accuracy.map(t => t.mean_accuracy);
+  const eRaw = data.enhanced.trial_accuracy.map(t => t.mean_accuracy);
+  const bSmooth = smoothArray(bRaw, 5);
+  const eSmooth = smoothArray(eRaw, 5);
+  const humanRaw = data.human_trial_accuracy || [];
+  const humanSmooth = smoothArray(humanRaw, 5);
+  const maxLen = Math.max(bSmooth.length, eSmooth.length, humanSmooth.length);
+  const labels = Array.from({length: maxLen}, (_, i) => i + 1);
+
+  const ctx = document.getElementById('chart-trial-accuracy').getContext('2d');
+  charts.trialAcc = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Basic Model',
+          data: bSmooth,
+          borderColor: '#4f8cff',
+          backgroundColor: 'transparent',
+          borderWidth: 2.5, pointRadius: 0, tension: 0.3, order: 1
+        },
+        {
+          label: 'Enhanced Model',
+          data: eSmooth,
+          borderColor: '#a78bfa',
+          backgroundColor: 'transparent',
+          borderWidth: 2.5, pointRadius: 0, tension: 0.3, order: 1
+        },
+        {
+          label: 'Human (estimated)',
+          data: humanSmooth.slice(0, maxLen),
+          borderColor: '#4ade80',
+          backgroundColor: 'transparent',
+          borderWidth: 2.5, borderDash: [6, 3],
+          pointRadius: 0, tension: 0.3, order: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { usePointStyle: true, filter: item => item.text !== '' }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Trial Number' },
+          grid: { display: false }, ticks: { maxTicksLimit: 15 }
+        },
+        y: {
+          title: { display: true, text: 'Accuracy' },
+          min: 0, max: 1, grid: { color: '#2a2e42' }
+        }
+      }
+    }
+  });
+}
+
+function renderPostSwitch(data) {
+  const bPS = data.basic.post_switch_accuracy || [];
+  const ePS = data.enhanced.post_switch_accuracy || [];
+  const hPS = data.human_post_switch || [];
+  const maxLen = Math.max(bPS.length, ePS.length, hPS.length);
+  const labels = Array.from({length: maxLen}, (_, i) => i + 1);
+
+  const ctx = document.getElementById('chart-postswitch').getContext('2d');
+  charts.postSwitch = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Basic Model',
+          data: bPS,
+          borderColor: '#4f8cff',
+          backgroundColor: 'rgba(79,140,255,0.1)',
+          fill: true, borderWidth: 2.5, pointRadius: 3,
+          pointBackgroundColor: '#4f8cff', tension: 0.3
+        },
+        {
+          label: 'Enhanced Model',
+          data: ePS,
+          borderColor: '#a78bfa',
+          backgroundColor: 'rgba(167,139,250,0.1)',
+          fill: true, borderWidth: 2.5, pointRadius: 3,
+          pointBackgroundColor: '#a78bfa', tension: 0.3
+        },
+        {
+          label: 'Human (estimated)',
+          data: hPS.slice(0, maxLen),
+          borderColor: '#4ade80',
+          backgroundColor: 'rgba(74,222,128,0.05)',
+          fill: true, borderWidth: 2.5, borderDash: [6, 3],
+          pointRadius: 3, pointBackgroundColor: '#4ade80', tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+      scales: {
+        x: { title: { display: true, text: 'Trials After Rule Switch' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Accuracy' }, min: 0, max: 1, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderUtilityTraces(data, showEnhanced) {
+  const modelKey = showEnhanced ? 'enhanced' : 'basic';
+  const traces = data[modelKey].utility_traces;
+  const colorTrace = traces.color || [];
+  const shapeTrace = traces.shape || [];
+  const numberTrace = traces.number || [];
+  const labels = colorTrace.map((_, i) => i + 1);
+
+  const labelStr = showEnhanced ? 'Enhanced' : 'Basic';
+  document.getElementById('utility-model-label').textContent = labelStr;
+
+  if (charts.utilities) { charts.utilities.destroy(); }
+
+  const ctx = document.getElementById('chart-utilities').getContext('2d');
+  charts.utilities = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Color', data: colorTrace,
+          borderColor: '#f87171', borderWidth: 2, pointRadius: 0, tension: 0.2
+        },
+        {
+          label: 'Shape', data: shapeTrace,
+          borderColor: '#4ade80', borderWidth: 2, pointRadius: 0, tension: 0.2
+        },
+        {
+          label: 'Number', data: numberTrace,
+          borderColor: '#fbbf24', borderWidth: 2, pointRadius: 0, tension: 0.2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true } },
+        tooltip: { callbacks: { title: items => `Trial ${items[0].label}` } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Trial Number' }, grid: { display: false }, ticks: { maxTicksLimit: 12 } },
+        y: { title: { display: true, text: 'Utility' }, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function updateUtilityChart() {
+  if (!cachedData) return;
+  const showEnhanced = document.getElementById('utility-toggle').checked;
+  renderUtilityTraces(cachedData, showEnhanced);
+}
+
+// ====================================================================
+// VARIANT COMPARISON
+// ====================================================================
+
+let variantCharts = {};
+
+function destroyVariantCharts() {
+  Object.values(variantCharts).forEach(c => c.destroy());
+  variantCharts = {};
+}
+
+async function runVariants() {
+  const btn = document.getElementById('btn-variants');
+  const btn2 = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn2.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running 7 variants...';
+  document.getElementById('variant-spinner').style.display = 'block';
+  document.getElementById('variant-results').style.display = 'none';
+
+  const params = {};
+  {% for key in params %}
+  params['{{ key }}'] = parseFloat(document.getElementById('param_{{ key }}').value);
+  {% endfor %}
+  params.n_simulations = Math.min(parseInt(document.getElementById('param_nsims').value), 20);
+  params.seed = 42;
+
+  try {
+    const resp = await fetch('/api/variants', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(params)
+    });
+    const data = await resp.json();
+    renderVariantResults(data);
+  } catch (err) {
+    alert('Variant comparison failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn2.disabled = false;
+    btn.innerHTML = 'Explore All 7 Variants';
+    document.getElementById('variant-spinner').style.display = 'none';
+  }
+}
+
+function renderVariantResults(data) {
+  destroyVariantCharts();
+  document.getElementById('variant-results').style.display = 'block';
+  document.getElementById('variant-elapsed').textContent =
+    `${data.n_simulations} sims x 7 variants in ${data.elapsed_seconds}s`;
+
+  renderLeaderboard(data);
+  renderVariantDescriptions(data);
+  renderVariantRMSD(data);
+  renderVariantPE(data);
+  renderVariantPostSwitch(data);
+}
+
+function renderLeaderboard(data) {
+  const tbody = document.querySelector('#variant-leaderboard tbody');
+  tbody.innerHTML = '';
+  const hd = data.human_data;
+
+  data.variants.forEach((v, i) => {
+    const ms = v.model_summary;
+    const isTop = i === 0;
+    const tr = document.createElement('tr');
+    if (isTop) tr.style.background = 'rgba(34,211,238,0.06)';
+    tr.innerHTML = `
+      <td style="font-weight:700;${isTop ? 'color:#22d3ee;' : ''}">${i + 1}</td>
+      <td>
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${v.color};margin-right:6px;"></span>
+        <strong>${v.short}</strong>
+      </td>
+      <td style="font-weight:700;color:${v.color};">${v.rmsd}</td>
+      <td>${ms.perseverative_errors.mean}</td>
+      <td>${ms.non_perseverative_errors.mean}</td>
+      <td>${ms.failure_to_maintain_set.mean}</td>
+      <td>${ms.conceptual_level_responses.mean}</td>
+      <td>${ms.total_errors.mean}</td>
+      <td>${ms.trials_first_category.mean}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const tr = document.createElement('tr');
+  tr.style.borderTop = '2px solid var(--accent-green)';
+  tr.innerHTML = `
+    <td></td>
+    <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4ade80;margin-right:6px;"></span><strong style="color:#4ade80;">Human</strong></td>
+    <td style="color:#4ade80;">target</td>
+    <td class="human-val">${hd.perseverative_errors.mean}</td>
+    <td class="human-val">${hd.non_perseverative_errors.mean}</td>
+    <td class="human-val">${hd.failure_to_maintain_set.mean}</td>
+    <td class="human-val">${hd.conceptual_level_responses.mean}</td>
+    <td class="human-val">${hd.total_errors.mean}</td>
+    <td class="human-val">${hd.trials_first_category.mean}</td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function renderVariantDescriptions(data) {
+  const container = document.getElementById('variant-descriptions');
+  container.innerHTML = '';
+  data.variants.forEach(v => {
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-bottom:0.75rem;padding:0.6rem 0.8rem;background:#151829;border-radius:6px;border-left:3px solid ' + v.color;
+    div.innerHTML = `
+      <strong style="color:${v.color}">${v.label}</strong>
+      <span style="font-size:0.72rem;color:var(--text-secondary);margin-left:0.5rem;">${v.references}</span>
+      <p style="margin:0.3rem 0 0;font-size:0.82rem;color:var(--text-secondary);line-height:1.5;">${v.description}</p>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function renderVariantRMSD(data) {
+  const labels = data.variants.map(v => v.short);
+  const values = data.variants.map(v => v.rmsd);
+  const colors = data.variants.map(v => v.color);
+
+  const ctx = document.getElementById('chart-variant-rmsd').getContext('2d');
+  variantCharts.rmsd = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'RMSD',
+        data: values,
+        backgroundColor: colors.map(c => c + '99'),
+        borderColor: colors,
+        borderWidth: 2, borderRadius: 6,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `RMSD: ${ctx.raw.toFixed(3)}` } }
+      },
+      scales: {
+        x: { beginAtZero: true, title: { display: true, text: 'RMSD (lower = better)' }, grid: { color: '#2a2e42' } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderVariantPE(data) {
+  const labels = data.variants.map(v => v.short);
+  const pe = data.variants.map(v => v.model_summary.perseverative_errors.mean);
+  const colors = data.variants.map(v => v.color);
+  const humanPE = data.human_data.perseverative_errors.mean;
+
+  const ctx = document.getElementById('chart-variant-pe').getContext('2d');
+  variantCharts.pe = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Persev. Errors',
+        data: pe,
+        backgroundColor: colors.map(c => c + '88'),
+        borderColor: colors,
+        borderWidth: 2, borderRadius: 6,
+      }]
+    },
+    plugins: [{
+      afterDraw: function(chart) {
+        const ctx2 = chart.ctx;
+        const yScale = chart.scales.y;
+        const xScale = chart.scales.x;
+        const y = yScale.getPixelForValue(humanPE);
+        ctx2.save();
+        ctx2.strokeStyle = '#4ade80';
+        ctx2.lineWidth = 2;
+        ctx2.setLineDash([6, 3]);
+        ctx2.beginPath();
+        ctx2.moveTo(xScale.left, y);
+        ctx2.lineTo(xScale.right, y);
+        ctx2.stroke();
+        ctx2.fillStyle = '#4ade80';
+        ctx2.font = 'bold 11px Inter';
+        ctx2.fillText(`Human: ${humanPE}`, xScale.right - 80, y - 7);
+        ctx2.restore();
+      }
+    }],
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, title: { display: true, text: 'Perseverative Errors' }, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderVariantPostSwitch(data) {
+  const datasets = [];
+  data.variants.forEach(v => {
+    const ps = v.post_switch_accuracy || [];
+    if (ps.length === 0) return;
+    datasets.push({
+      label: v.short,
+      data: ps,
+      borderColor: v.color,
+      backgroundColor: 'transparent',
+      borderWidth: 2, pointRadius: 2,
+      pointBackgroundColor: v.color,
+      tension: 0.3
+    });
+  });
+
+  const hps = data.human_post_switch || [];
+  if (hps.length > 0) {
+    datasets.push({
+      label: 'Human',
+      data: hps,
+      borderColor: '#4ade80',
+      backgroundColor: 'transparent',
+      borderWidth: 3, borderDash: [6, 3],
+      pointRadius: 3, pointBackgroundColor: '#4ade80',
+      tension: 0.3
+    });
+  }
+
+  const maxLen = Math.max(...datasets.map(d => d.data.length));
+  const labels = Array.from({length: maxLen}, (_, i) => i + 1);
+
+  const ctx = document.getElementById('chart-variant-postswitch').getContext('2d');
+  variantCharts.postSwitch = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true, font: { size: 10 } } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Trials After Rule Switch' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Accuracy' }, min: 0, max: 1, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+
+// ====================================================================
+// TEACHING TAB
+// ====================================================================
+
+function destroyTeachingCharts() {
+  Object.values(teachingCharts).forEach(c => c.destroy());
+  teachingCharts = {};
+}
+
+async function runTeaching() {
+  const btn = document.getElementById('btn-teaching');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running 3 models...';
+  document.getElementById('teaching-spinner').style.display = 'block';
+  document.getElementById('teaching-results').style.display = 'none';
+
+  const n_sims = parseInt(document.getElementById('param_teach_nsims').value);
+
+  try {
+    const resp = await fetch('/api/teaching', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ n_simulations: n_sims, seed: 42 })
+    });
+    const data = await resp.json();
+    teachingData = data;
+    renderTeachingResults(data);
+  } catch (err) {
+    alert('Teaching simulation failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Run Teaching Comparison';
+    document.getElementById('teaching-spinner').style.display = 'none';
+  }
+}
+
+function renderTeachingResults(data) {
+  destroyTeachingCharts();
+  document.getElementById('teaching-results').style.display = 'block';
+  document.getElementById('teach-elapsed').textContent =
+    `${data.n_simulations} sims x 3 models in ${data.elapsed_seconds}s`;
+
+  renderTeachRMSD(data);
+  renderTeachSummaryTable(data);
+  renderTeachBarChart(data);
+  renderTeachErrorChart(data);
+  renderTeachPostSwitch(data);
+  renderTeachTrialAccuracy(data);
+  renderTeachUtilities(data, 'basic');
+}
+
+const MODEL_COLORS = { basic: '#4f8cff', enhanced: '#a78bfa', full: '#f87171' };
+const MODEL_LABELS = { basic: 'Basic', enhanced: 'Enhanced', full: 'Full' };
+const MODEL_ORDER = ['basic', 'enhanced', 'full'];
+
+function renderTeachRMSD(data) {
+  const container = document.getElementById('teach-rmsd-container');
+  container.innerHTML = '';
+  MODEL_ORDER.forEach((mid, i) => {
+    const m = data.models[mid];
+    if (!m) return;
+    const div = document.createElement('div');
+    div.className = 'rmsd-item';
+    div.innerHTML = `
+      <span class="rmsd-label">${m.label}</span>
+      <span class="rmsd-badge" style="background:${m.color}22;color:${m.color};">${m.rmsd !== null ? m.rmsd.toFixed(3) : '--'}</span>
+    `;
+    container.appendChild(div);
+    if (i < MODEL_ORDER.length - 1) {
+      const arrow = document.createElement('div');
+      arrow.style.cssText = 'font-size:1.5rem;color:var(--text-secondary);';
+      arrow.textContent = '\u2192';
+      container.appendChild(arrow);
+    }
+  });
+}
+
+function renderTeachSummaryTable(data) {
+  const tbody = document.getElementById('teach-summary-tbody');
+  tbody.innerHTML = '';
+  const keys = [
+    'categories_completed', 'total_errors', 'perseverative_errors',
+    'non_perseverative_errors', 'trials_first_category',
+    'failure_to_maintain_set', 'conceptual_level_responses'
+  ];
+  const hd = data.human_data;
+
+  keys.forEach(key => {
+    const h = hd[key];
+    if (!h) return;
+
+    // Find closest model for highlighting
+    let bestMid = null;
+    let bestDist = Infinity;
+    MODEL_ORDER.forEach(mid => {
+      const m = data.models[mid]?.model_summary?.[key];
+      if (m) {
+        const dist = Math.abs(m.mean - h.mean);
+        if (dist < bestDist) { bestDist = dist; bestMid = mid; }
+      }
+    });
+
+    const tr = document.createElement('tr');
+    let cells = `<td>${h.label || key}</td>`;
+    MODEL_ORDER.forEach(mid => {
+      const m = data.models[mid]?.model_summary?.[key];
+      const val = m ? m.mean : '--';
+      const isBest = mid === bestMid;
+      const color = MODEL_COLORS[mid];
+      cells += `<td style="color:${color};font-weight:600;${isBest ? 'background:rgba(74,222,128,0.08);' : ''}">${val}</td>`;
+    });
+    cells += `<td class="human-val">${h.mean}</td>`;
+    cells += `<td>${h.sd}</td>`;
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderTeachBarChart(data) {
+  const keys = ['total_errors','perseverative_errors',
+                'non_perseverative_errors','trials_first_category',
+                'failure_to_maintain_set','conceptual_level_responses'];
+  const hd = data.human_data;
+  const labels = keys.map(k => {
+    const h = hd[k];
+    if (!h) return k;
+    return h.label.replace(' Resp. (%)', '%').replace('Non-Perseverative', 'Non-Persev.');
+  });
+
+  const datasets = MODEL_ORDER.map(mid => {
+    const m = data.models[mid];
+    return {
+      label: m.label,
+      data: keys.map(k => m.model_summary[k]?.mean || 0),
+      backgroundColor: m.color + '99',
+      borderColor: m.color,
+      borderWidth: 1, borderRadius: 4,
+    };
+  });
+  datasets.push({
+    label: 'Human Data',
+    data: keys.map(k => hd[k]?.mean || 0),
+    backgroundColor: 'rgba(74,222,128,0.6)',
+    borderColor: '#4ade80',
+    borderWidth: 1, borderRadius: 4,
+  });
+
+  const ctx = document.getElementById('teach-chart-bar').getContext('2d');
+  teachingCharts.bar = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'rectRounded' } },
+      },
+      scales: {
+        x: { ticks: { maxRotation: 35, font: { size: 10 } }, grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderTeachErrorChart(data) {
+  const hd = data.human_data;
+  const chartLabels = [...MODEL_ORDER.map(mid => data.models[mid].short), 'Human'];
+  const peVals = [...MODEL_ORDER.map(mid => data.models[mid].model_summary.perseverative_errors?.mean || 0), hd.perseverative_errors.mean];
+  const npeVals = [...MODEL_ORDER.map(mid => data.models[mid].model_summary.non_perseverative_errors?.mean || 0), hd.non_perseverative_errors.mean];
+
+  const ctx = document.getElementById('teach-chart-errors').getContext('2d');
+  teachingCharts.errors = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: chartLabels,
+      datasets: [
+        {
+          label: 'Perseverative',
+          data: peVals,
+          backgroundColor: 'rgba(248,113,113,0.65)',
+          borderColor: '#f87171', borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Non-Perseverative',
+          data: npeVals,
+          backgroundColor: 'rgba(251,191,36,0.65)',
+          borderColor: '#fbbf24', borderWidth: 1, borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'rectRounded' } }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, beginAtZero: true, grid: { color: '#2a2e42' }, title: { display: true, text: 'Errors' } }
+      }
+    }
+  });
+}
+
+function renderTeachPostSwitch(data) {
+  const datasets = [];
+  MODEL_ORDER.forEach(mid => {
+    const m = data.models[mid];
+    const ps = m.post_switch_accuracy || [];
+    datasets.push({
+      label: m.label,
+      data: ps,
+      borderColor: m.color,
+      backgroundColor: m.color + '18',
+      fill: true, borderWidth: 2.5, pointRadius: 3,
+      pointBackgroundColor: m.color, tension: 0.3
+    });
+  });
+
+  const hps = data.human_post_switch || [];
+  datasets.push({
+    label: 'Human (estimated)',
+    data: hps,
+    borderColor: '#4ade80',
+    backgroundColor: 'rgba(74,222,128,0.05)',
+    fill: true, borderWidth: 2.5, borderDash: [6, 3],
+    pointRadius: 3, pointBackgroundColor: '#4ade80', tension: 0.3
+  });
+
+  const maxLen = Math.max(...datasets.map(d => d.data.length));
+  const labels = Array.from({length: maxLen}, (_, i) => i + 1);
+
+  const ctx = document.getElementById('teach-chart-postswitch').getContext('2d');
+  teachingCharts.postSwitch = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+      scales: {
+        x: { title: { display: true, text: 'Trials After Rule Switch' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Accuracy' }, min: 0, max: 1, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderTeachTrialAccuracy(data) {
+  const datasets = [];
+  MODEL_ORDER.forEach(mid => {
+    const m = data.models[mid];
+    const raw = m.trial_accuracy.map(t => t.mean_accuracy);
+    const smooth = smoothArray(raw, 5);
+    datasets.push({
+      label: m.label,
+      data: smooth,
+      borderColor: m.color,
+      backgroundColor: 'transparent',
+      borderWidth: 2.5, pointRadius: 0, tension: 0.3
+    });
+  });
+
+  const humanRaw = data.human_trial_accuracy || [];
+  const humanSmooth = smoothArray(humanRaw, 5);
+  datasets.push({
+    label: 'Human (estimated)',
+    data: humanSmooth,
+    borderColor: '#4ade80',
+    backgroundColor: 'transparent',
+    borderWidth: 2.5, borderDash: [6, 3],
+    pointRadius: 0, tension: 0.3
+  });
+
+  const maxLen = Math.max(...datasets.map(d => d.data.length));
+  const labels = Array.from({length: maxLen}, (_, i) => i + 1);
+
+  const ctx = document.getElementById('teach-chart-trial').getContext('2d');
+  teachingCharts.trial = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Trial Number' }, grid: { display: false }, ticks: { maxTicksLimit: 15 } },
+        y: { title: { display: true, text: 'Accuracy' }, min: 0, max: 1, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderTeachUtilities(data, modelId) {
+  const m = data.models[modelId];
+  if (!m) return;
+  const traces = m.utility_traces;
+  const colorTrace = traces.color || [];
+  const shapeTrace = traces.shape || [];
+  const numberTrace = traces.number || [];
+  const labels = colorTrace.map((_, i) => i + 1);
+
+  document.getElementById('teach-util-model-label').textContent = m.short;
+
+  // Update button styling
+  MODEL_ORDER.forEach(mid => {
+    const btn = document.getElementById('teach-util-btn-' + mid);
+    if (btn) {
+      btn.style.background = mid === modelId ? MODEL_COLORS[mid] : '#3a3e52';
+    }
+  });
+
+  if (teachingCharts.utilities) { teachingCharts.utilities.destroy(); }
+
+  const ctx = document.getElementById('teach-chart-utilities').getContext('2d');
+  teachingCharts.utilities = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Color', data: colorTrace,
+          borderColor: '#f87171', borderWidth: 2, pointRadius: 0, tension: 0.2
+        },
+        {
+          label: 'Shape', data: shapeTrace,
+          borderColor: '#4ade80', borderWidth: 2, pointRadius: 0, tension: 0.2
+        },
+        {
+          label: 'Number', data: numberTrace,
+          borderColor: '#fbbf24', borderWidth: 2, pointRadius: 0, tension: 0.2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true } },
+        tooltip: { callbacks: { title: items => `Trial ${items[0].label}` } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Trial Number' }, grid: { display: false }, ticks: { maxTicksLimit: 12 } },
+        y: { title: { display: true, text: 'Utility' }, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function showTeachingUtility(modelId) {
+  if (!teachingData) return;
+  renderTeachUtilities(teachingData, modelId);
+}
+
+// ====================================================================
+// OPTIMIZATION TAB
+// ====================================================================
+
+let optimizeData = null;
+let optCharts = {};
+
+function destroyOptCharts() {
+  Object.values(optCharts).forEach(c => c.destroy());
+  optCharts = {};
+}
+
+async function runOptimize() {
+  const btn = document.getElementById('btn-optimize');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running Bayesian optimization...';
+  document.getElementById('opt-spinner').style.display = 'block';
+  document.getElementById('opt-results').style.display = 'none';
+
+  try {
+    const resp = await fetch('/api/optimize', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ n_trials: 150, n_sims_trial: 5, n_sims_final: 50, seed: 42 })
+    });
+    const data = await resp.json();
+    optimizeData = data;
+    renderOptResults(data);
+  } catch (err) {
+    alert('Optimization failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Run Bayesian Optimization';
+    document.getElementById('opt-spinner').style.display = 'none';
+  }
+}
+
+function renderOptResults(data) {
+  destroyOptCharts();
+  document.getElementById('opt-results').style.display = 'block';
+
+  const cfg = data.search_config || {};
+  document.getElementById('opt-elapsed').textContent =
+    `Bayesian optimization: ${data.total_combos_tested} TPE trials ` +
+    `(${cfg.n_sims_per_trial || '?'} sims/trial, CRN), ` +
+    `Search: ${data.stage1_seconds}s, Final eval: ${data.stage2_seconds}s ` +
+    `(${data.n_simulations_final} sims). Total: ${data.elapsed_seconds}s`;
+
+  renderOptParamTable(data);
+  renderOptRMSD(data);
+  renderOptComposite(data);
+  renderOptSummaryTable(data);
+  renderOptBarChart(data);
+  renderOptErrorChart(data);
+  renderOptPostSwitch(data);
+  renderOptTrialAccuracy(data);
+  renderOptUtilities(data, 'default_run');
+  renderOptGridChart(data);
+  renderOptConvergence(data);
+  renderOptSearchConfig(data);
+}
+
+const PARAM_LABELS = {
+  utility_noise: 'Utility Noise (s)',
+  utility_alpha: 'Learning Rate (alpha)',
+  initial_utility: 'Initial Utility (U0)',
+  correct_reward: 'Correct Reward (R+)',
+  incorrect_reward: 'Incorrect Reward (R-)',
+  lapse_rate: 'Lapse Rate',
+  set_loss_rate: 'Set-Loss Rate',
+  set_loss_strength: 'Set-Loss Strength',
+  hypothesis_boost: 'Hypothesis Boost',
+};
+
+function renderOptParamTable(data) {
+  const tbody = document.getElementById('opt-param-tbody');
+  tbody.innerHTML = '';
+  document.getElementById('opt-combos-tested').textContent = data.total_combos_tested;
+
+  const allKeys = ['utility_noise','utility_alpha','initial_utility','correct_reward',
+                   'incorrect_reward','lapse_rate','set_loss_rate','set_loss_strength','hypothesis_boost'];
+
+  allKeys.forEach(k => {
+    const defVal = data.default_params[k];
+    const optVal = data.best_params[k];
+    if (defVal === undefined && optVal === undefined) return;
+
+    const changed = Math.abs((optVal || 0) - (defVal || 0)) > 0.001;
+    const diff = (optVal || 0) - (defVal || 0);
+    const diffStr = changed ? (diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)) : '--';
+
+    const tr = document.createElement('tr');
+    if (changed) tr.style.background = 'rgba(34,211,238,0.06)';
+    tr.innerHTML = `
+      <td>${PARAM_LABELS[k] || k}</td>
+      <td style="color:var(--accent-red);font-weight:600;">${defVal !== undefined ? defVal : '--'}</td>
+      <td style="color:var(--accent-cyan);font-weight:600;">${optVal !== undefined ? optVal : '--'}</td>
+      <td style="color:${changed ? 'var(--accent-yellow)' : 'var(--text-secondary)'};font-weight:${changed ? '700' : '400'};">${diffStr}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderOptRMSD(data) {
+  const container = document.getElementById('opt-rmsd-container');
+  container.innerHTML = '';
+  const items = [
+    { label: 'Default Full', color: '#f87171', rmsd: data.default_run.rmsd },
+    { label: 'Optimized', color: '#22d3ee', rmsd: data.optimized.rmsd },
+  ];
+  items.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'rmsd-item';
+    div.innerHTML = `
+      <span class="rmsd-label">${item.label}</span>
+      <span class="rmsd-badge" style="background:${item.color}22;color:${item.color};">${item.rmsd !== null ? item.rmsd.toFixed(3) : '--'}</span>
+    `;
+    container.appendChild(div);
+    if (i === 0) {
+      const arrow = document.createElement('div');
+      arrow.style.cssText = 'font-size:1.5rem;color:var(--text-secondary);';
+      arrow.textContent = '\u2192';
+      container.appendChild(arrow);
+    }
+  });
+  // Add improvement
+  if (data.default_run.rmsd && data.optimized.rmsd) {
+    const pct = ((data.default_run.rmsd - data.optimized.rmsd) / data.default_run.rmsd * 100).toFixed(1);
+    const improved = data.optimized.rmsd < data.default_run.rmsd;
+    const div = document.createElement('div');
+    div.className = 'rmsd-item';
+    div.innerHTML = `
+      <span class="rmsd-label">Improvement</span>
+      <span class="rmsd-badge" style="background:${improved ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'};color:${improved ? '#4ade80' : '#f87171'};">${improved ? '-' : '+'}${Math.abs(pct)}%</span>
+    `;
+    container.appendChild(div);
+  }
+}
+
+function renderOptSummaryTable(data) {
+  const tbody = document.getElementById('opt-summary-tbody');
+  tbody.innerHTML = '';
+  const keys = [
+    'categories_completed', 'total_errors', 'perseverative_errors',
+    'non_perseverative_errors', 'trials_first_category',
+    'failure_to_maintain_set', 'conceptual_level_responses'
+  ];
+  const hd = data.human_data;
+
+  keys.forEach(key => {
+    const h = hd[key];
+    if (!h) return;
+    const d = data.default_run.model_summary[key];
+    const o = data.optimized.model_summary[key];
+    const dVal = d ? d.mean : '--';
+    const oVal = o ? o.mean : '--';
+    const dDist = d ? Math.abs(d.mean - h.mean) : Infinity;
+    const oDist = o ? Math.abs(o.mean - h.mean) : Infinity;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${h.label || key}</td>
+      <td style="color:var(--accent-red);font-weight:600;${dDist <= oDist ? 'background:rgba(74,222,128,0.08);' : ''}">${dVal}</td>
+      <td style="color:var(--accent-cyan);font-weight:600;${oDist <= dDist ? 'background:rgba(74,222,128,0.08);' : ''}">${oVal}</td>
+      <td class="human-val">${h.mean}</td>
+      <td>${h.sd}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderOptBarChart(data) {
+  const keys = ['total_errors','perseverative_errors','non_perseverative_errors',
+                'trials_first_category','failure_to_maintain_set','conceptual_level_responses'];
+  const hd = data.human_data;
+  const labels = keys.map(k => {
+    const h = hd[k];
+    return h ? h.label.replace(' Resp. (%)', '%').replace('Non-Perseverative', 'Non-Persev.') : k;
+  });
+
+  const ctx = document.getElementById('opt-chart-bar').getContext('2d');
+  optCharts.bar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Default Full',
+          data: keys.map(k => data.default_run.model_summary[k]?.mean || 0),
+          backgroundColor: 'rgba(248,113,113,0.6)', borderColor: '#f87171',
+          borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Optimized',
+          data: keys.map(k => data.optimized.model_summary[k]?.mean || 0),
+          backgroundColor: 'rgba(34,211,238,0.6)', borderColor: '#22d3ee',
+          borderWidth: 1, borderRadius: 4,
+        },
+        {
+          label: 'Human Data',
+          data: keys.map(k => hd[k]?.mean || 0),
+          backgroundColor: 'rgba(74,222,128,0.6)', borderColor: '#4ade80',
+          borderWidth: 1, borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'rectRounded' } } },
+      scales: {
+        x: { ticks: { maxRotation: 35, font: { size: 10 } }, grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderOptErrorChart(data) {
+  const hd = data.human_data;
+  const labels = ['Default', 'Optimized', 'Human'];
+  const peVals = [
+    data.default_run.model_summary.perseverative_errors?.mean || 0,
+    data.optimized.model_summary.perseverative_errors?.mean || 0,
+    hd.perseverative_errors.mean,
+  ];
+  const npeVals = [
+    data.default_run.model_summary.non_perseverative_errors?.mean || 0,
+    data.optimized.model_summary.non_perseverative_errors?.mean || 0,
+    hd.non_perseverative_errors.mean,
+  ];
+
+  const ctx = document.getElementById('opt-chart-errors').getContext('2d');
+  optCharts.errors = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Perseverative', data: peVals, backgroundColor: 'rgba(248,113,113,0.65)', borderColor: '#f87171', borderWidth: 1, borderRadius: 4 },
+        { label: 'Non-Perseverative', data: npeVals, backgroundColor: 'rgba(251,191,36,0.65)', borderColor: '#fbbf24', borderWidth: 1, borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'rectRounded' } } },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, beginAtZero: true, grid: { color: '#2a2e42' }, title: { display: true, text: 'Errors' } }
+      }
+    }
+  });
+}
+
+function renderOptPostSwitch(data) {
+  const dPS = data.default_run.post_switch_accuracy || [];
+  const oPS = data.optimized.post_switch_accuracy || [];
+  const hPS = data.human_post_switch || [];
+  const maxLen = Math.max(dPS.length, oPS.length, hPS.length);
+  const labels = Array.from({length: maxLen}, (_, i) => i + 1);
+
+  const ctx = document.getElementById('opt-chart-postswitch').getContext('2d');
+  optCharts.postSwitch = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Default Full', data: dPS, borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.1)', fill: true, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#f87171', tension: 0.3 },
+        { label: 'Optimized', data: oPS, borderColor: '#22d3ee', backgroundColor: 'rgba(34,211,238,0.1)', fill: true, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#22d3ee', tension: 0.3 },
+        { label: 'Human (estimated)', data: hPS.slice(0, maxLen), borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.05)', fill: true, borderWidth: 2.5, borderDash: [6, 3], pointRadius: 3, pointBackgroundColor: '#4ade80', tension: 0.3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+      scales: {
+        x: { title: { display: true, text: 'Trials After Rule Switch' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Accuracy' }, min: 0, max: 1, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderOptTrialAccuracy(data) {
+  const dRaw = data.default_run.trial_accuracy.map(t => t.mean_accuracy);
+  const oRaw = data.optimized.trial_accuracy.map(t => t.mean_accuracy);
+  const dSmooth = smoothArray(dRaw, 5);
+  const oSmooth = smoothArray(oRaw, 5);
+  const humanRaw = data.human_trial_accuracy || [];
+  const humanSmooth = smoothArray(humanRaw, 5);
+  const maxLen = Math.max(dSmooth.length, oSmooth.length, humanSmooth.length);
+  const labels = Array.from({length: maxLen}, (_, i) => i + 1);
+
+  const ctx = document.getElementById('opt-chart-trial').getContext('2d');
+  optCharts.trial = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Default Full', data: dSmooth, borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, tension: 0.3 },
+        { label: 'Optimized', data: oSmooth, borderColor: '#22d3ee', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, tension: 0.3 },
+        { label: 'Human (estimated)', data: humanSmooth.slice(0, maxLen), borderColor: '#4ade80', backgroundColor: 'transparent', borderWidth: 2.5, borderDash: [6, 3], pointRadius: 0, tension: 0.3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+      scales: {
+        x: { title: { display: true, text: 'Trial Number' }, grid: { display: false }, ticks: { maxTicksLimit: 15 } },
+        y: { title: { display: true, text: 'Accuracy' }, min: 0, max: 1, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderOptUtilities(data, modelKey) {
+  const m = data[modelKey];
+  if (!m) return;
+  const traces = m.utility_traces;
+  const colorTrace = traces.color || [];
+  const shapeTrace = traces.shape || [];
+  const numberTrace = traces.number || [];
+  const labels = colorTrace.map((_, i) => i + 1);
+
+  document.getElementById('opt-util-model-label').textContent = m.short;
+
+  // Update button styles
+  const defBtn = document.getElementById('opt-util-btn-default');
+  const optBtn = document.getElementById('opt-util-btn-optimized');
+  defBtn.style.background = modelKey === 'default_run' ? 'var(--accent-red)' : '#3a3e52';
+  optBtn.style.background = modelKey === 'optimized' ? 'var(--accent-cyan)' : '#3a3e52';
+
+  if (optCharts.utilities) { optCharts.utilities.destroy(); }
+
+  const ctx = document.getElementById('opt-chart-utilities').getContext('2d');
+  optCharts.utilities = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Color', data: colorTrace, borderColor: '#f87171', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+        { label: 'Shape', data: shapeTrace, borderColor: '#4ade80', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+        { label: 'Number', data: numberTrace, borderColor: '#fbbf24', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true } },
+        tooltip: { callbacks: { title: items => `Trial ${items[0].label}` } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Trial Number' }, grid: { display: false }, ticks: { maxTicksLimit: 12 } },
+        y: { title: { display: true, text: 'Utility' }, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function showOptUtility(modelKey) {
+  if (!optimizeData) return;
+  renderOptUtilities(optimizeData, modelKey);
+}
+
+function renderOptGridChart(data) {
+  const top20 = data.grid_top_20 || [];
+  if (top20.length === 0) return;
+
+  const labels = top20.map((r, i) => `#${i+1}`);
+  const values = top20.map(r => r.composite || r.rmsd);
+  const colors = top20.map((r, i) => i === 0 ? '#22d3ee' : (i < 3 ? '#4ade80' : '#8b8fa3'));
+
+  const ctx = document.getElementById('opt-chart-grid').getContext('2d');
+  optCharts.grid = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Composite RMSD',
+        data: values,
+        backgroundColor: colors.map(c => c + '88'),
+        borderColor: colors,
+        borderWidth: 2, borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx2 => {
+              const r = top20[ctx2.dataIndex];
+              const p = r.params;
+              return [
+                `Composite: ${r.composite || r.rmsd}`,
+                `Summary RMSD: ${r.rmsd}, Post-switch: ${r.postswitch_rmsd || '?'}`,
+                `noise: ${p.utility_noise}, alpha: ${p.utility_alpha}`,
+                `R-: ${p.incorrect_reward}, boost: ${p.hypothesis_boost}`,
+                `lapse: ${p.lapse_rate}, set_loss: ${p.set_loss_rate}`,
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Rank' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Composite RMSD (lower = better)' }, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderOptComposite(data) {
+  const d = data.default_run;
+  const o = data.optimized;
+  const components = ['Summary Stats', 'Post-Switch Curve', 'Trial-by-Trial'];
+  const weights = [0.50, 0.30, 0.20];
+  const defVals = [d.rmsd || 0, d.postswitch_rmsd || 0, d.trial_rmsd || 0];
+  const optVals = [o.rmsd || 0, o.postswitch_rmsd || 0, o.trial_rmsd || 0];
+
+  const ctx = document.getElementById('opt-chart-composite').getContext('2d');
+  optCharts.composite = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: components.map((c, i) => `${c} (${Math.round(weights[i]*100)}%)`),
+      datasets: [
+        {
+          label: 'Default',
+          data: defVals,
+          backgroundColor: '#f8717188',
+          borderColor: '#f87171',
+          borderWidth: 2, borderRadius: 4,
+        },
+        {
+          label: 'Optimized',
+          data: optVals,
+          backgroundColor: '#22d3ee88',
+          borderColor: '#22d3ee',
+          borderWidth: 2, borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#e4e6f0', usePointStyle: true } },
+        tooltip: {
+          callbacks: {
+            afterLabel: ctx2 => {
+              const idx = ctx2.dataIndex;
+              const dw = defVals[idx] * weights[idx];
+              const ow = optVals[idx] * weights[idx];
+              return `Weighted contribution: ${ctx2.datasetIndex === 0 ? dw.toFixed(4) : ow.toFixed(4)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { title: { display: true, text: 'RMSD (lower = better)' }, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderOptConvergence(data) {
+  const conv = data.convergence || [];
+  if (conv.length === 0) return;
+
+  const labels = conv.map((_, i) => i + 1);
+
+  const ctx = document.getElementById('opt-chart-convergence').getContext('2d');
+  optCharts.convergence = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Best Composite RMSD',
+        data: conv,
+        borderColor: '#22d3ee',
+        backgroundColor: '#22d3ee22',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#e4e6f0' } },
+        annotation: conv.length >= 20 ? {
+          annotations: {
+            startupLine: {
+              type: 'line',
+              xMin: 20, xMax: 20,
+              borderColor: '#fbbf2488',
+              borderWidth: 2,
+              borderDash: [6, 3],
+              label: {
+                display: true,
+                content: 'TPE starts',
+                position: 'start',
+                color: '#fbbf24',
+                font: { size: 11 }
+              }
+            }
+          }
+        } : {}
+      },
+      scales: {
+        x: { title: { display: true, text: 'Trial Number' }, grid: { display: false } },
+        y: { title: { display: true, text: 'Best Composite RMSD' }, grid: { color: '#2a2e42' } }
+      }
+    }
+  });
+}
+
+function renderOptSearchConfig(data) {
+  const cfg = data.search_config || {};
+  const el = document.getElementById('opt-search-config');
+  el.innerHTML = `
+    <h3 style="color:var(--accent-cyan);font-size:0.95rem;">Search Configuration</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr><td style="padding:0.3rem 0;">Method</td><td style="text-align:right;color:var(--accent-cyan);">${cfg.method || 'Bayesian (TPE)'}</td></tr>
+      <tr><td style="padding:0.3rem 0;">Total trials</td><td style="text-align:right;">${cfg.n_trials || data.total_combos_tested}</td></tr>
+      <tr><td style="padding:0.3rem 0;">Sims per trial (CRN)</td><td style="text-align:right;">${cfg.n_sims_per_trial || '?'} (${cfg.crn_seeds || '?'} fixed seeds)</td></tr>
+      <tr><td style="padding:0.3rem 0;">Final evaluation sims</td><td style="text-align:right;">${cfg.n_sims_final || data.n_simulations_final}</td></tr>
+      <tr><td style="padding:0.3rem 0;">Objective weights</td><td style="text-align:right;">Summary ${(cfg.objective_weights?.summary||0.5)*100}% / Post-switch ${(cfg.objective_weights?.postswitch||0.3)*100}% / Trial ${(cfg.objective_weights?.trial||0.2)*100}%</td></tr>
+      <tr><td style="padding:0.3rem 0;">Parameters searched</td><td style="text-align:right;">All 9 simultaneously</td></tr>
+    </table>
+  `;
+}
+</script>
+
+</body>
+</html>
