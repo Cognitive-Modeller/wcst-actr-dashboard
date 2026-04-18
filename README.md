@@ -6,7 +6,7 @@ The model does not use hand-coded rules or heuristics. Instead, it relies on a s
 
 ## Demo
 
-<video src="assets/demo.webm" controls width="100%"></video>
+https://github.com/Cognitive-Modeller/wcst-actr-dashboard/releases/download/v0.1.0/demo.webm
 
 ## How it works
 
